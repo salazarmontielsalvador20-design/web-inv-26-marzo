@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kiosco SmartLibrary v7.0</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Remix Icon for icons -->
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <h1 class="glow-text"><i class="ri-book-read-line"></i> SMART LIBRARY <span class="subtitle">- Centro de Auto-Servicio</span></h1>
+        </header>
+
+        <!-- Main Layout -->
+        <main class="main-layout">
+            <!-- Left Column: Kiosk & Actions -->
+            <section class="left-column">
+                <div class="panel">
+                    <h2>Terminal Inteligente</h2>
+                    <p class="text-muted">Muestre su Código de Barras a la cámara web. El kiosco lo detectará automáticamente.</p>
+                    
+                    <!-- Scanner Container -->
+                    <div id="reader" class="scanner-container"></div>
+                    
+                    <!-- Simular escaneo manual -->
+                    <div style="margin-bottom: 1.5rem; padding: 1rem; background: rgba(255, 255, 255, 0.05); border-radius: 6px; border: 1px dashed var(--border-color);">
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;"><i class="ri-keyboard-line"></i> ¿Cámara apagada? Simula un escaneo:</p>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <input type="text" id="input-simulador" placeholder="Ej: 23070526 o INV-01" class="dropdown" style="margin-bottom: 0; flex: 1;">
+                            <button id="btn-simular" class="btn btn-cyan" style="width: auto; padding: 0.8rem 1.5rem;">Escanear</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Status Banner -->
+                    <div id="status-banner" class="status-banner banner-default">
+                        <h3>Kiosco de Auto-Servicio</h3>
+                        <p>Pase su credencial con Código de Barras por la cámara para iniciar.</p>
+                    </div>
+
+                    <!-- Actions Panel (Hidden by default) -->
+                    <div id="panel-acciones" class="panel-acciones hidden">
+                        <hr class="divider">
+                        
+                        <button id="btn-entrar-salir" class="btn btn-green">
+                            <i class="ri-arrow-left-right-line"></i> Torniquete: Marcar Entrada / Salida
+                        </button>
+                        
+                        <hr class="divider">
+                        
+                        <!-- Borrow Book section -->
+                        <div class="action-card border-cyan">
+                            <h4 class="text-cyan">LLEVAR UN LIBRO A CASA</h4>
+                            <select id="dd-libros" class="dropdown">
+                                <option value="" disabled selected>1. Selecciona un libro disponible</option>
+                            </select>
+                            <label style="font-size: 0.85rem; color: var(--cyan-text); margin-bottom: 0.2rem; display: block;">2. Selecciona el tiempo:</label>
+                            <div class="presets-container">
+                                <button type="button" class="btn-preset active" data-time="20s">20 Segundos</button>
+                                <button type="button" class="btn-preset" data-time="2h">2 Horas</button>
+                                <button type="button" class="btn-preset" data-time="2d">2 Días</button>
+                            </div>
+                            <button id="btn-prestar" class="btn btn-cyan">Confirmar Préstamo</button>
+                        </div>
+                        
+                        <div class="spacer"></div>
+                        
+                        <!-- Reserve Table section -->
+                        <div class="action-card border-purple">
+                            <h4 class="text-purple">RESERVAR MESA (Límite 1 por persona)</h4>
+                            <select id="dd-mesas" class="dropdown">
+                                <option value="" disabled selected>1. Selecciona un espacio disponible</option>
+                            </select>
+                            <select id="dd-motivos" class="dropdown">
+                                <option value="" disabled selected>2. ¿Para qué lo usarás?</option>
+                            </select>
+                            <button id="btn-reservar" class="btn btn-purple">Confirmar Reserva</button>
+                        </div>
+                        
+                        <hr class="divider">
+                        
+                        <button id="btn-cerrar" class="btn btn-red">
+                            <i class="ri-logout-box-r-line"></i> TERMINAR TRÁMITES Y SALIR
+                        </button>
+
+                        <div class="admin-instructions hidden" id="instrucciones-admin">
+                            <strong><i class="ri-information-fill"></i> Aviso: Adeudo Pendiente</strong><br>
+                            Para quitar el adeudo de $50 pesos debes pagar en el edificio administrativo.<br><br>
+                            <strong>Pasos:</strong><br>
+                            1. Escanea tu Código de Barras primero.<br>
+                            2. Luego, escanea el código proporcionado por el edificio administrativo.
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Column: Inventory & Log -->
+            <section class="right-column">
+                
+                <!-- NEW: Wall of Shame -->
+                <div class="panel panel-danger mb-4" id="panel-deudores">
+                    <h3><i class="ri-alert-fill"></i> Alumnos con Adeudos</h3>
+                    <div class="table-container header-fixed" style="height: 180px;">
+                        <table id="tabla-deudores">
+                            <thead>
+                                <tr>
+                                    <th>Alumno</th>
+                                    <th>Adeudo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- JS Injected -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- NEW: Busiest Hours Chart -->
+                <div class="panel mb-4">
+                    <h3>Estadísticas: Horas con más Movimiento</h3>
+                    <div style="position: relative; height: 180px; width: 100%;">
+                        <canvas id="chart-horas"></canvas>
+                    </div>
+                </div>
+
+                <!-- Inventory Table -->
+                <div class="panel">
+                    <h3>Disponibilidad de Libros (Inventario)</h3>
+                    <div class="table-container header-fixed" style="height: 200px;">
+                        <table id="tabla-inventario">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Título del Libro</th>
+                                    <th>Disponibilidad</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Rows injected via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="spacer"></div>
+
+                <!-- Traceability Log -->
+                <div class="panel">
+                    <h3>Bitácora de Trazabilidad en Tiempo Real</h3>
+                    <div class="table-container log-container header-fixed" style="height: 220px;">
+                        <table id="tabla-log">
+                            <thead>
+                                <tr>
+                                    <th>Hora</th>
+                                    <th>Acción</th>
+                                    <th>Detalle del Movimiento</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Rows injected via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- html5-qrcode library -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
