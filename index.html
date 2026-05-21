@@ -111,7 +111,7 @@
             <!-- Right Column -->
             <section class="right-column">
                 <!-- Giant Inventory Button -->
-                <button id="btn-open-inventory" class="btn-giant glass-card mb-4">
+                <button class="btn-giant glass-card mb-4 btn-open-inventory">
                     <i class="ri-search-eye-line"></i>
                     <span>Consultar Disponibilidad de Libros</span>
                     <small>Catálogo Completo, Ubicaciones y Stock</small>
@@ -156,12 +156,19 @@
         <!-- VIEW 2: ESTADÍSTICAS EN VIVO                   -->
         <!-- ============================================== -->
         <main id="view-stats" class="view">
+            <!-- Giant Inventory Button (Also available in Stats) -->
+            <button class="btn-giant glass-card mb-4 btn-open-inventory">
+                <i class="ri-search-eye-line"></i>
+                <span>Consultar Disponibilidad de Libros</span>
+                <small>Catálogo Completo, Ubicaciones y Stock</small>
+            </button>
+
             <div class="stats-grid">
                 <!-- Top KPI Cards -->
                 <div class="kpi-card glass-card">
                     <div class="kpi-icon bg-primary-light text-primary"><i class="ri-group-line"></i></div>
                     <div class="kpi-data">
-                        <h4 id="stat-alumnos">0</h4>
+                        <h4 id="stat-alumnos">42</h4>
                         <p>Alumnos Adentro</p>
                     </div>
                 </div>
@@ -172,11 +179,13 @@
                         <p>Libros Disponibles</p>
                     </div>
                 </div>
-                <div class="kpi-card glass-card">
+                <div class="kpi-card glass-card" style="align-items: flex-start;">
                     <div class="kpi-icon bg-warning-light text-warning"><i class="ri-money-dollar-circle-line"></i></div>
-                    <div class="kpi-data">
-                        <h4 id="stat-multas">$0</h4>
-                        <p>Multas Activas</p>
+                    <div class="kpi-data" style="width: 100%;">
+                        <h4>Deudores</h4>
+                        <div id="stat-multas-lista" style="font-size: 0.85rem; color: var(--danger); font-weight: 600; margin-top: 0.5rem; max-height: 50px; overflow-y: auto;">
+                            Ninguno
+                        </div>
                     </div>
                 </div>
             </div>
@@ -197,7 +206,7 @@
                         <div class="cubicle-col" id="cubicles-left">
                             <!-- Injected via JS -->
                         </div>
-                        <div class="hallway">Pasillo Central</div>
+                        <div class="hallway"></div>
                         <div class="cubicle-col" id="cubicles-right">
                             <!-- Injected via JS -->
                         </div>
@@ -246,10 +255,10 @@
                         <button id="btn-admin-prestar" class="btn btn-primary w-100"><i class="ri-check-line"></i> Procesar Préstamo</button>
                     </div>
 
-                    <!-- User Database Overview -->
+                    <!-- User Database Overview & Tools -->
                     <div class="panel glass-card flex-2">
                         <h3><i class="ri-group-line"></i> Base de Usuarios</h3>
-                        <div class="table-container" style="height: 350px;">
+                        <div class="table-container mb-4" style="height: 150px;">
                             <table id="tabla-usuarios-admin">
                                 <thead>
                                     <tr>
@@ -261,6 +270,27 @@
                                 </thead>
                                 <tbody><!-- JS Injected --></tbody>
                             </table>
+                        </div>
+
+                        <div class="flex-row">
+                            <!-- Clear Debt Admin -->
+                            <div class="flex-1">
+                                <h4><i class="ri-money-dollar-circle-line text-success"></i> Liberar Adeudos</h4>
+                                <select id="admin-dd-deudores" class="input-modern w-100 mb-2 mt-2">
+                                    <option value="" disabled selected>Selecciona alumno con deuda</option>
+                                </select>
+                                <button id="btn-admin-liberar" class="btn btn-success w-100">Liberar Deuda</button>
+                            </div>
+                            
+                            <!-- Cubicle Assignment -->
+                            <div class="flex-1">
+                                <h4><i class="ri-layout-masonry-line text-purple"></i> Asignar Cubículo</h4>
+                                <input type="text" id="admin-input-cub-alumno" class="input-modern w-100 mb-2 mt-2" placeholder="ID Alumno (Ej. 23070526)">
+                                <select id="admin-dd-cubiculos" class="input-modern w-100 mb-2">
+                                    <option value="" disabled selected>Selecciona cubículo libre</option>
+                                </select>
+                                <button id="btn-admin-asignar-cub" class="btn btn-purple w-100">Asignar Cubículo</button>
+                            </div>
                         </div>
                     </div>
                 </div>

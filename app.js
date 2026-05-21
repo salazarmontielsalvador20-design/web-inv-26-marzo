@@ -173,13 +173,19 @@ function actualizarLogs() {
 
 function actualizarStatsUI() {
     // KPI
-    document.getElementById("stat-alumnos").textContent = usuarios_en_biblioteca.size;
+    const fictitiousCount = 42 + usuarios_en_biblioteca.size;
+    document.getElementById("stat-alumnos").textContent = fictitiousCount;
     
     let librosDisponibles = Object.values(libros_db).reduce((acc, l) => acc + l.ejemplares_disponibles, 0);
     document.getElementById("stat-libros").textContent = librosDisponibles;
     
-    let multasTotales = Object.values(usuarios_db).reduce((acc, u) => acc + u.deuda, 0);
-    document.getElementById("stat-multas").textContent = `$${multasTotales}`;
+    const deudores = Object.values(usuarios_db).filter(u => u.deuda > 0);
+    const listaMultas = document.getElementById("stat-multas-lista");
+    if (deudores.length === 0) {
+        listaMultas.innerHTML = "Ninguno";
+    } else {
+        listaMultas.innerHTML = deudores.map(u => `• ${u.nombre}`).join("<br>");
+    }
 
     // Cubicles Visualizer
     const leftCol = document.getElementById("cubicles-left");
@@ -210,6 +216,32 @@ function actualizarAdminUI() {
         `;
         tbodyUsuarios.appendChild(tr);
     });
+
+    // Llenar dropdown de deudores
+    const ddDeudores = document.getElementById("admin-dd-deudores");
+    if (ddDeudores) {
+        ddDeudores.innerHTML = '<option value="" disabled selected>Selecciona alumno con deuda</option>';
+        Object.entries(usuarios_db).forEach(([id, datos]) => {
+            if (datos.deuda > 0) {
+                const opt = document.createElement("option");
+                opt.value = id; opt.textContent = `${id} - ${datos.nombre} ($${datos.deuda})`;
+                ddDeudores.appendChild(opt);
+            }
+        });
+    }
+
+    // Llenar dropdown de cubículos
+    const ddCubiculos = document.getElementById("admin-dd-cubiculos");
+    if (ddCubiculos) {
+        ddCubiculos.innerHTML = '<option value="" disabled selected>Selecciona cubículo libre</option>';
+        Object.entries(mesas_db).forEach(([id, datos]) => {
+            if (datos.estado === "Disponible") {
+                const opt = document.createElement("option");
+                opt.value = id; opt.textContent = datos.desc;
+                ddCubiculos.appendChild(opt);
+            }
+        });
+    }
 }
 
 function renderInventory() {
@@ -501,6 +533,38 @@ document.getElementById("btn-admin-prestar").addEventListener("click", () => {
     
     registrarLog("PRÉSTAMO", `(ADMIN) asignó ${libros_db[libroId].titulo} a ${usuarios_db[alumnoId].nombre}`);
     alert("Préstamo manual procesado con éxito.");
+    document.getElementById("admin-input-alumno").value = "";
+    document.getElementById("admin-input-libro").value = "";
+    sincronizarTodo();
+});
+
+document.getElementById("btn-admin-liberar")?.addEventListener("click", () => {
+    const alumnoId = document.getElementById("admin-dd-deudores").value;
+    if (!alumnoId) { alert("Selecciona a un alumno."); return; }
+    
+    usuarios_db[alumnoId].deuda = 0;
+    registrarLog("PAGO", `(ADMIN) liberó la deuda de ${usuarios_db[alumnoId].nombre}`);
+    alert(`La deuda de ${usuarios_db[alumnoId].nombre} ha sido borrada.`);
+    sincronizarTodo();
+});
+
+document.getElementById("btn-admin-asignar-cub")?.addEventListener("click", () => {
+    const alumnoId = document.getElementById("admin-input-cub-alumno").value.trim();
+    const mesaId = document.getElementById("admin-dd-cubiculos").value;
+    
+    if(!usuarios_db[alumnoId]) { alert("Alumno no encontrado"); return; }
+    if(!mesaId) { alert("Selecciona un cubículo"); return; }
+    
+    if (usuarios_db[alumnoId].mesa_activa !== null) {
+        alert("El alumno ya tiene un cubículo asignado."); return;
+    }
+    
+    mesas_db[mesaId].estado = `Ocupado por: ${usuarios_db[alumnoId].nombre}`;
+    usuarios_db[alumnoId].mesa_activa = mesaId;
+    
+    registrarLog("RESERVA", `(ADMIN) asignó ${mesas_db[mesaId].desc} a ${usuarios_db[alumnoId].nombre}`);
+    alert("Cubículo asignado con éxito.");
+    document.getElementById("admin-input-cub-alumno").value = "";
     sincronizarTodo();
 });
 
@@ -508,8 +572,10 @@ document.getElementById("btn-admin-prestar").addEventListener("click", () => {
 // ==========================================
 // 6. INVENTORY MODAL LOGIC
 // ==========================================
-document.getElementById("btn-open-inventory").addEventListener("click", () => {
-    document.getElementById("modal-inventory").classList.remove("hidden");
+document.querySelectorAll(".btn-open-inventory").forEach(btn => {
+    btn.addEventListener("click", () => {
+        document.getElementById("modal-inventory").classList.remove("hidden");
+    });
 });
 document.getElementById("btn-close-inventory").addEventListener("click", () => {
     document.getElementById("modal-inventory").classList.add("hidden");
