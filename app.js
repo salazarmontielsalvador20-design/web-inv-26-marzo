@@ -1,5 +1,5 @@
 // ==========================================
-// 1. BASE DE DATOS SIMULADA
+// 1. DATA BASE SIMULADA
 // ==========================================
 const usuarios_db = {
     "23070526": { nombre: "Salvador (Admin)", carrera: "Ing. Sistemas", mesa_activa: null, deuda: 0, prestamos: [] },
@@ -7,100 +7,154 @@ const usuarios_db = {
     "INV-01": { nombre: "Visitante", carrera: "Externa", mesa_activa: null, deuda: 50, prestamos: [] }
 };
 
-const libros_db = {
-    "LIB-01": { titulo: "Física Universitaria Vol 1", estado: "Disponible" },
-    "LIB-02": { titulo: "Cálculo Integral", estado: "Disponible" },
-    "LIB-03": { titulo: "Redes de Computadoras", estado: "Prestado a: Maria Gonzalez" },
-    "LIB-04": { titulo: "Inteligencia Artificial", estado: "Disponible" }
-};
+const categorias_libros = ["Ingeniería", "Química", "Matemáticas", "Electrónica", "Medicina", "Programación", "Física"];
+const prefijos = ["Fundamentos de", "Introducción a", "Avanzado:", "Manual de", "Principios de", "Guía Práctica de", "Aplicaciones de"];
+const libros_db = {};
+
+// Generar 50 libros dinámicamente
+for(let i=1; i<=50; i++) {
+    const cat = categorias_libros[i % categorias_libros.length];
+    const pref = prefijos[i % prefijos.length];
+    const id = `LIB-${i.toString().padStart(3, '0')}`;
+    const standRow = ['A', 'B', 'C', 'D', 'E'][i % 5];
+    const standCol = Math.ceil(i/10);
+    
+    libros_db[id] = {
+        id: id,
+        titulo: `${pref} ${cat} Vol. ${Math.ceil(i/7)}`,
+        categoria: cat,
+        stand: `Stand ${standRow}${standCol}`,
+        ejemplares_totales: Math.floor(Math.random() * 4) + 1, // 1 to 4 copies
+        ejemplares_disponibles: 0
+    };
+    libros_db[id].ejemplares_disponibles = libros_db[id].ejemplares_totales;
+}
 
 const mesas_db = {
-    "M1-PA": { desc: "Planta Baja - Biblioteca A", estado: "Disponible" },
-    "M2-P1": { desc: "1er Piso - Biblioteca A", estado: "Disponible" },
-    "M3-P2": { desc: "2do Piso - Biblioteca A", estado: "Disponible" },
-    "CUB-1": { desc: "Cubículo 1 - Edificio B", estado: "Disponible" },
-    "CUB-2": { desc: "Cubículo 2 - Edificio B", estado: "Disponible" }
+    "CUB-L1": { desc: "Cubículo L1 (Izq)", estado: "Disponible", pos: "left" },
+    "CUB-L2": { desc: "Cubículo L2 (Izq)", estado: "Disponible", pos: "left" },
+    "CUB-L3": { desc: "Cubículo L3 (Izq)", estado: "Disponible", pos: "left" },
+    "CUB-L4": { desc: "Cubículo L4 (Izq)", estado: "Disponible", pos: "left" },
+    "CUB-R1": { desc: "Cubículo R1 (Der)", estado: "Disponible", pos: "right" },
+    "CUB-R2": { desc: "Cubículo R2 (Der)", estado: "Disponible", pos: "right" },
+    "CUB-R3": { desc: "Cubículo R3 (Der)", estado: "Disponible", pos: "right" },
+    "CUB-R4": { desc: "Cubículo R4 (Der)", estado: "Disponible", pos: "right" }
 };
 
-const motivos_reserva = ["Proyecto en Equipo", "Lectura de Clase", "Estudio Individual", "Tutoría Académica"];
-
 // ==========================================
-// 2. ESTADO DEL SISTEMA GLOBALES
+// 2. ESTADOS GLOBALES
 // ==========================================
 let activity_log = [];
 let usuarios_en_biblioteca = new Set();
 let usuario_activo = null;
+let currentView = "view-kiosco";
 
+// Scanner state
+let html5QrCode = null;
+let currentFacingMode = "environment";
 let ignoreScans = false;
+let scanLock = false;
+let esperandoPago = false;
 let logoutTimer = null;
 let selectedPreset = "20s";
 
-// ==========================================
-// 3. ELEMENTOS DEL DOM
-// ==========================================
-const statusBanner = document.getElementById("status-banner");
-const panelAcciones = document.getElementById("panel-acciones");
-const ddLibros = document.getElementById("dd-libros");
-const ddMesas = document.getElementById("dd-mesas");
-const ddMotivos = document.getElementById("dd-motivos");
-const tbodyInventario = document.querySelector("#tabla-inventario tbody");
-const tbodyLog = document.querySelector("#tabla-log tbody");
-const tbodyDeudores = document.querySelector("#tabla-deudores tbody");
-const btnPresets = document.querySelectorAll(".btn-preset");
+// Inventory State
+let currentInvCategory = "ALL";
+let currentInvSearch = "";
 
-// DOM Buttons
-const btnEntrarSalir = document.getElementById("btn-entrar-salir");
-const btnPrestar = document.getElementById("btn-prestar");
-const btnReservar = document.getElementById("btn-reservar");
-const btnCerrar = document.getElementById("btn-cerrar");
+// Chart
+let chartHoras = null;
 
 // ==========================================
-// 4. LÓGICA DE NEGOCIO Y KIOSCO
+// 3. UI RENDERING LOGIC
 // ==========================================
-
-function playAnnoyingBeep() {
-    try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(800, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.5);
-        
-        gain.gain.setValueAtTime(1, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.8);
-        
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        
-        osc.start();
-        osc.stop(ctx.currentTime + 1);
-    } catch(e) {
-        console.error("Audio no soportado o bloqueado");
-    }
-}
 
 function formatTime() {
     const now = new Date();
     return now.toLocaleTimeString('es-ES', { hour12: false });
 }
 
-function actualizarUiKiosco() {
-    // 1. Actualizar tabla de libros
-    tbodyInventario.innerHTML = "";
-    Object.entries(libros_db).forEach(([id, datos]) => {
-        const isDisponible = datos.estado === "Disponible";
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-            <td>${id}</td>
-            <td>${datos.titulo}</td>
-            <td class="${isDisponible ? 'text-success' : 'text-danger'}">${datos.estado}</td>
-        `;
-        tbodyInventario.appendChild(tr);
-    });
+function registrarLog(tipo, detalle) {
+    activity_log.unshift({ hora: formatTime(), tipo, detalle });
+    if (activity_log.length > 20) activity_log.pop();
+    actualizarLogs();
+}
 
-    // 2. Actualizar tabla de logs
+function playAnnoyingBeep() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(800, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.5);
+        gain.gain.setValueAtTime(1, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.8);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 1);
+    } catch(e) {}
+}
+
+function actualizarStatusBanner(mensaje, tipoClase) {
+    const banner = document.getElementById("status-banner");
+    banner.className = `status-banner banner-${tipoClase}`;
+    banner.innerHTML = mensaje;
+}
+
+// ------------------------------------------
+// UPDATERS PARA CADA VISTA
+// ------------------------------------------
+
+function actualizarKioscoUI() {
+    // Dropdown Libros
+    if(usuario_activo) {
+        const ddLibros = document.getElementById("dd-libros");
+        ddLibros.innerHTML = '<option value="" disabled selected>1. Selecciona un libro disponible</option>';
+        Object.entries(libros_db).forEach(([id, datos]) => {
+            if (datos.ejemplares_disponibles > 0) {
+                const opt = document.createElement("option");
+                opt.value = id; opt.textContent = `${datos.titulo} (Disp: ${datos.ejemplares_disponibles})`;
+                ddLibros.appendChild(opt);
+            }
+        });
+
+        const ddMisLibros = document.getElementById("dd-mis-libros");
+        ddMisLibros.innerHTML = '<option value="" disabled selected>1. Selecciona un libro tuyo</option>';
+        if (usuarios_db[usuario_activo].prestamos && usuarios_db[usuario_activo].prestamos.length > 0) {
+            usuarios_db[usuario_activo].prestamos.forEach(p => {
+                const opt = document.createElement("option");
+                opt.value = p.libro; opt.textContent = libros_db[p.libro] ? libros_db[p.libro].titulo : p.libro;
+                ddMisLibros.appendChild(opt);
+            });
+        }
+
+        const ddMesas = document.getElementById("dd-mesas");
+        ddMesas.innerHTML = '<option value="" disabled selected>1. Selecciona un cubículo libre</option>';
+        Object.entries(mesas_db).forEach(([id, datos]) => {
+            if (datos.estado === "Disponible") {
+                const opt = document.createElement("option");
+                opt.value = id; opt.textContent = datos.desc;
+                ddMesas.appendChild(opt);
+            }
+        });
+    }
+
+    // Tabla Deudores
+    const tbodyDeudores = document.querySelector("#tabla-deudores tbody");
+    tbodyDeudores.innerHTML = "";
+    Object.entries(usuarios_db).forEach(([id, datos]) => {
+        if (datos.deuda > 0) {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `<td>${datos.nombre}</td><td class="text-danger font-weight-bold">$${datos.deuda}</td>`;
+            tbodyDeudores.appendChild(tr);
+        }
+    });
+}
+
+function actualizarLogs() {
+    const tbodyLog = document.querySelector("#tabla-log tbody");
     tbodyLog.innerHTML = "";
     activity_log.forEach(log => {
         const tr = document.createElement("tr");
@@ -109,181 +163,198 @@ function actualizarUiKiosco() {
         else if (log.tipo === "SALIDA") badgeClass = "badge-orange";
         else if (log.tipo === "SEGURIDAD") badgeClass = "badge-red";
         else if (log.tipo === "RESERVA") badgeClass = "badge-purple";
-        else if (log.tipo === "PRÉSTAMO") badgeClass = "badge-cyan";
-
-        tr.innerHTML = `
-            <td>${log.hora}</td>
-            <td><span class="badge ${badgeClass}">${log.tipo}</span></td>
-            <td>${log.detalle}</td>
-        `;
+        else if (log.tipo === "PRÉSTAMO") badgeClass = "badge-blue";
+        else if (log.tipo === "DEVOLUCIÓN") badgeClass = "badge-green";
+        
+        tr.innerHTML = `<td>${log.hora}</td><td><span class="badge ${badgeClass}">${log.tipo}</span></td><td>${log.detalle}</td>`;
         tbodyLog.appendChild(tr);
     });
-
-    // 3. Refrescar listas desplegables
-    if (usuario_activo) {
-        // Libros
-        ddLibros.innerHTML = '<option value="" disabled selected>1. Selecciona un libro disponible</option>';
-        Object.entries(libros_db).forEach(([id, datos]) => {
-            if (datos.estado === "Disponible") {
-                const opt = document.createElement("option");
-                opt.value = id;
-                opt.textContent = datos.titulo;
-                ddLibros.appendChild(opt);
-            }
-        });
-
-        // Mesas
-        ddMesas.innerHTML = '<option value="" disabled selected>1. Selecciona un espacio disponible</option>';
-        Object.entries(mesas_db).forEach(([id, datos]) => {
-            if (datos.estado === "Disponible") {
-                const opt = document.createElement("option");
-                opt.value = id;
-                opt.textContent = datos.desc;
-                ddMesas.appendChild(opt);
-            }
-        });
-    }
-
-    // 4. Actualizar tabla de deudores
-    if (tbodyDeudores) {
-        tbodyDeudores.innerHTML = "";
-        Object.entries(usuarios_db).forEach(([id, datos]) => {
-            if (datos.deuda > 0) {
-                const tr = document.createElement("tr");
-                tr.innerHTML = `
-                    <td>${datos.nombre}</td>
-                    <td class="text-danger">$${datos.deuda}</td>
-                `;
-                tbodyDeudores.appendChild(tr);
-            }
-        });
-    }
 }
 
-function registrarLog(tipo, detalle) {
-    activity_log.unshift({ hora: formatTime(), tipo, detalle });
-    if (activity_log.length > 20) activity_log.pop();
-    actualizarUiKiosco();
+function actualizarStatsUI() {
+    // KPI
+    document.getElementById("stat-alumnos").textContent = usuarios_en_biblioteca.size;
+    
+    let librosDisponibles = Object.values(libros_db).reduce((acc, l) => acc + l.ejemplares_disponibles, 0);
+    document.getElementById("stat-libros").textContent = librosDisponibles;
+    
+    let multasTotales = Object.values(usuarios_db).reduce((acc, u) => acc + u.deuda, 0);
+    document.getElementById("stat-multas").textContent = `$${multasTotales}`;
+
+    // Cubicles Visualizer
+    const leftCol = document.getElementById("cubicles-left");
+    const rightCol = document.getElementById("cubicles-right");
+    leftCol.innerHTML = ""; rightCol.innerHTML = "";
+    
+    Object.entries(mesas_db).forEach(([id, datos]) => {
+        const div = document.createElement("div");
+        const isFree = datos.estado === "Disponible";
+        div.className = `cubicle ${isFree ? 'free' : 'occupied'}`;
+        div.innerHTML = `<div>${id}</div><small>${isFree ? 'Libre' : datos.estado}</small>`;
+        if (datos.pos === "left") leftCol.appendChild(div);
+        else rightCol.appendChild(div);
+    });
 }
 
-function actualizarStatusBanner(mensaje, tipoClase, duracionRevert = 0) {
-    statusBanner.className = `status-banner banner-${tipoClase}`;
-    statusBanner.innerHTML = mensaje;
+function actualizarAdminUI() {
+    const tbodyUsuarios = document.querySelector("#tabla-usuarios-admin tbody");
+    if(!tbodyUsuarios) return;
+    tbodyUsuarios.innerHTML = "";
+    Object.entries(usuarios_db).forEach(([id, datos]) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td><strong>${id}</strong></td>
+            <td>${datos.nombre}</td>
+            <td class="${datos.deuda > 0 ? 'text-danger font-weight-bold' : 'text-success'}">$${datos.deuda}</td>
+            <td>${datos.prestamos.length} libros</td>
+        `;
+        tbodyUsuarios.appendChild(tr);
+    });
+}
+
+function renderInventory() {
+    const grid = document.getElementById("inventory-grid");
+    grid.innerHTML = "";
+    
+    // Sort alphabetically
+    let sortedLibros = Object.values(libros_db).sort((a,b) => a.titulo.localeCompare(b.titulo));
+    
+    sortedLibros.forEach(libro => {
+        // Filter Logic
+        if(currentInvCategory !== "ALL" && libro.categoria !== currentInvCategory) return;
+        if(currentInvSearch && !libro.titulo.toLowerCase().includes(currentInvSearch) && !libro.id.toLowerCase().includes(currentInvSearch)) return;
+
+        const card = document.createElement("div");
+        card.className = "book-card";
+        
+        let stockClass = "stock-high";
+        if(libro.ejemplares_disponibles === 0) stockClass = "stock-out";
+        else if (libro.ejemplares_disponibles === 1) stockClass = "stock-low";
+        
+        let stockText = libro.ejemplares_disponibles === 0 ? "Agotado" : `${libro.ejemplares_disponibles} de ${libro.ejemplares_totales} disp.`;
+
+        card.innerHTML = `
+            <div class="book-id">${libro.id}</div>
+            <div class="book-cat">${libro.categoria}</div>
+            <div class="book-title">${libro.titulo}</div>
+            <div class="book-meta">
+                <span class="book-stand"><i class="ri-map-pin-line"></i> ${libro.stand}</span>
+                <span class="book-stock ${stockClass}">${stockText}</span>
+            </div>
+        `;
+        grid.appendChild(card);
+    });
+}
+
+function sincronizarTodo() {
+    actualizarKioscoUI();
+    actualizarLogs();
+    actualizarStatsUI();
+    actualizarAdminUI();
+}
+
+// ==========================================
+// 4. LÓGICA DEL KIOSCO
+// ==========================================
+
+function cerrarSesionKiosco() {
+    usuario_activo = null;
+    document.getElementById("panel-acciones").classList.add("hidden");
+    ignoreScans = false;
+    esperandoPago = false;
+    document.getElementById("status-pago").classList.add("hidden");
+    document.getElementById('instrucciones-admin').classList.add('hidden');
+    
+    const btns = ["btn-entrar-salir", "btn-prestar", "btn-devolver", "btn-reservar"];
+    btns.forEach(id => document.getElementById(id).disabled = false);
+
+    actualizarStatusBanner(`<h3><i class="ri-scan-2-line"></i> Auto-Servicio</h3><p>Esperando escaneo de credencial...</p>`, "default");
+    sincronizarTodo();
 }
 
 function procesarAccesoKiosco(qr_data) {
     if (usuario_activo) {
-        // Here we handle the admin barcode
-        // The admin barcode is the reverse of the user's ID
+        // Validación Admin para pagar
         const reverso = usuario_activo.split('').reverse().join('');
         if (qr_data === reverso) {
-            // It's the admin code!
+            if (!esperandoPago) return;
             if (usuarios_db[usuario_activo].deuda > 0) {
                 usuarios_db[usuario_activo].deuda = 0;
-                actualizarStatusBanner(`<h3>¡Adeudo Pagado!</h3><p>El edificio administrativo ha liberado tu cuenta.</p>`, "green");
-                registrarLog("PAGO", `${usuarios_db[usuario_activo].nombre} liquidó su adeudo.`);
+                esperandoPago = false;
                 document.getElementById('instrucciones-admin').classList.add('hidden');
+                document.getElementById('status-pago').classList.add('hidden');
+                actualizarStatusBanner(`<h3><i class="ri-check-line"></i> ¡Adeudo Pagado!</h3><p>Tu cuenta ha sido liberada.</p>`, "green");
+                registrarLog("PAGO", `${usuarios_db[usuario_activo].nombre} liquidó su adeudo.`);
                 
-                btnEntrarSalir.disabled = false;
-                btnPrestar.disabled = false;
-                btnReservar.disabled = false;
-                
-                actualizarUiKiosco();
+                ["btn-entrar-salir", "btn-prestar", "btn-devolver", "btn-reservar"].forEach(id => document.getElementById(id).disabled = false);
+                sincronizarTodo();
             }
         }
-        return; // Ignorar otros escaneos mientras haya alguien logueado y no sea el código admin
+        return; 
     }
 
     if (usuarios_db.hasOwnProperty(qr_data)) {
         usuario_activo = qr_data;
-        
-        // Revisar si ya tiene un adeudo pendiente
         if (usuarios_db[qr_data].deuda > 0) {
             playAnnoyingBeep();
             actualizarStatusBanner(`
-                <h3>ACCESO BLOQUEADO</h3>
-                <p>Cuentas con un adeudo de $${usuarios_db[qr_data].deuda} pesos. No puedes usar los servicios.</p>
-                <p>Pase a pagar al edificio administrativo.</p>
+                <h3><i class="ri-error-warning-line"></i> ACCESO BLOQUEADO</h3>
+                <p>Deuda activa de $${usuarios_db[qr_data].deuda}. Pase a pagar a administración.</p>
             `, "red");
             document.getElementById('instrucciones-admin').classList.remove('hidden');
-            ignoreScans = false; // Permitimos que escanee el admin code
+            ignoreScans = true; 
+            esperandoPago = false;
             
-            panelAcciones.classList.remove("hidden");
-            btnEntrarSalir.disabled = true;
-            btnPrestar.disabled = true;
-            btnReservar.disabled = true;
+            document.getElementById("panel-acciones").classList.remove("hidden");
+            document.getElementById("btn-entrar-salir").disabled = true;
+            document.getElementById("btn-prestar").disabled = true;
+            document.getElementById("btn-devolver").disabled = false;
+            document.getElementById("btn-reservar").disabled = true;
+            sincronizarTodo();
             return;
         }
 
         const nombre = usuarios_db[qr_data].nombre;
-        const estandoDentro = usuarios_en_biblioteca.has(qr_data);
-        const estadoAcceso = estandoDentro ? "DENTRO de instalaciones" : "FUERA de instalaciones";
-
-        actualizarStatusBanner(`
-            <h3>¡Hola ${nombre}!</h3>
-            <p>(${estadoAcceso})</p>
-            <p>Puedes realizar múltiples trámites. Al finalizar, presiona 'Terminar y Salir'.</p>
-        `, "blue");
-
-        // Motivos
-        ddMotivos.innerHTML = '<option value="" disabled selected>2. ¿Para qué lo usarás?</option>';
-        motivos_reserva.forEach(m => {
-            const opt = document.createElement("option");
-            opt.value = m;
-            opt.textContent = m;
-            ddMotivos.appendChild(opt);
-        });
-
-        panelAcciones.classList.remove("hidden");
-
-        // Ignorar lecturas dobles de escáner sin pausar la cámara
+        const estadoAcceso = usuarios_en_biblioteca.has(qr_data) ? "Adentro" : "Afuera";
+        actualizarStatusBanner(`<h3>¡Hola ${nombre}!</h3><p>Estado: ${estadoAcceso}. ¿Qué deseas hacer hoy?</p>`, "blue");
+        
+        document.getElementById("panel-acciones").classList.remove("hidden");
         ignoreScans = true;
-
-        actualizarUiKiosco();
-
-        // Limpiamos posible timer
+        sincronizarTodo();
         if (logoutTimer) clearTimeout(logoutTimer);
-
     } else {
-        actualizarStatusBanner(`<h3>ACCESO DENEGADO</h3><p>Código desconocido.</p>`, "red");
-        registrarLog("SEGURIDAD", "Intento de acceso fallido");
+        actualizarStatusBanner(`<h3><i class="ri-error-warning-fill"></i> CÓDIGO INVÁLIDO</h3>`, "red");
+        registrarLog("SEGURIDAD", "Intento de escaneo no reconocido.");
         playAnnoyingBeep();
-
         ignoreScans = true;
         if (logoutTimer) clearTimeout(logoutTimer);
         logoutTimer = setTimeout(cerrarSesionKiosco, 2000);
     }
 }
 
-function actionEntrarSalir() {
+// Botones Kiosco
+document.getElementById("btn-entrar-salir").addEventListener("click", () => {
     if (!usuario_activo) return;
     const nombre = usuarios_db[usuario_activo].nombre;
-
     if (usuarios_en_biblioteca.has(usuario_activo)) {
         usuarios_en_biblioteca.delete(usuario_activo);
-        registrarLog("SALIDA", `${nombre} marcó salida.`);
-        actualizarStatusBanner(`<h3>Salida registrada</h3><p>¡Que tengas un excelente día, ${nombre}!</p>`, "orange");
+        registrarLog("SALIDA", `${nombre} salió.`);
+        actualizarStatusBanner(`<h3>¡Hasta pronto!</h3><p>Salida registrada para ${nombre}.</p>`, "orange");
     } else {
         usuarios_en_biblioteca.add(usuario_activo);
-        registrarLog("ENTRADA", `${nombre} marcó entrada.`);
-        actualizarStatusBanner(`<h3>Entrada registrada</h3><p>¡Bienvenido a la biblioteca!</p>`, "green");
+        registrarLog("ENTRADA", `${nombre} entró.`);
+        actualizarStatusBanner(`<h3>¡Bienvenido!</h3><p>Entrada registrada para ${nombre}.</p>`, "green");
     }
-
+    sincronizarTodo();
     if (logoutTimer) clearTimeout(logoutTimer);
-    logoutTimer = setTimeout(cerrarSesionKiosco, 1500);
-}
+    logoutTimer = setTimeout(cerrarSesionKiosco, 2000);
+});
 
-function actionPrestar() {
-    const libroId = ddLibros.value;
-    if (!libroId) {
-        actualizarStatusBanner(`<h3>Error</h3><p>Selecciona un libro primero.</p>`, "red");
-        return;
-    }
+document.getElementById("btn-prestar").addEventListener("click", () => {
+    const libroId = document.getElementById("dd-libros").value;
+    if (!libroId) return;
 
-    const nombre = usuarios_db[usuario_activo].nombre;
-    libros_db[libroId].estado = `Prestado a: ${nombre}`;
-
-    // Calcular fecha de vencimiento según preset
+    libros_db[libroId].ejemplares_disponibles -= 1;
     let duracionMs = 0;
     if (selectedPreset === "20s") duracionMs = 20 * 1000;
     else if (selectedPreset === "2h") duracionMs = 2 * 60 * 60 * 1000;
@@ -291,212 +362,241 @@ function actionPrestar() {
     
     usuarios_db[usuario_activo].prestamos.push({
         libro: libroId,
-        fecha_prestamo: Date.now(),
         fecha_vencimiento: Date.now() + duracionMs
     });
 
-    registrarLog("PRÉSTAMO", `${nombre} se llevó: ${libros_db[libroId].titulo}`);
+    registrarLog("PRÉSTAMO", `${usuarios_db[usuario_activo].nombre} pidió ${libros_db[libroId].titulo}`);
+    actualizarStatusBanner(`<h3>¡Préstamo Asignado!</h3><p>No olvides regresarlo a tiempo.</p>`, "blue");
+    sincronizarTodo();
+});
 
-    actualizarStatusBanner(`<h3>¡Éxito!</h3><p>Libro asignado con éxito a tu cuenta. Puedes hacer otro trámite o terminar.</p>`, "cyan");
-    actualizarUiKiosco();
-}
+document.getElementById("btn-devolver").addEventListener("click", () => {
+    const libroId = document.getElementById("dd-mis-libros").value;
+    if (!libroId) return;
 
-function actionReservar() {
-    const mesaId = ddMesas.value;
-    const motivo = ddMotivos.value;
-    const nombre = usuarios_db[usuario_activo].nombre;
+    usuarios_db[usuario_activo].prestamos = usuarios_db[usuario_activo].prestamos.filter(p => p.libro !== libroId);
+    libros_db[libroId].ejemplares_disponibles += 1;
 
-    // REGLA 1: Revisar si el alumno ya tiene mesa
+    registrarLog("DEVOLUCIÓN", `${usuarios_db[usuario_activo].nombre} devolvió ${libros_db[libroId].titulo}`);
+    actualizarStatusBanner(`<h3>¡Devuelto!</h3><p>Gracias por tu puntualidad.</p>`, "green");
+    sincronizarTodo();
+});
+
+document.getElementById("btn-reservar").addEventListener("click", () => {
+    const mesaId = document.getElementById("dd-mesas").value;
+    if (!mesaId) return;
     if (usuarios_db[usuario_activo].mesa_activa !== null) {
-        actualizarStatusBanner(`<h3>LÍMITE ALCANZADO</h3><p>Ya tienes la mesa ${usuarios_db[usuario_activo].mesa_activa} reservada. Solo 1 por alumno.</p>`, "red");
+        actualizarStatusBanner(`<h3>Límite</h3><p>Ya tienes un cubículo asignado.</p>`, "red");
         return;
     }
-
-    // REGLA 2: Validar campos vacíos
-    if (!mesaId || !motivo) {
-        actualizarStatusBanner(`<h3>Error</h3><p>Selecciona el espacio y el motivo.</p>`, "red");
-        return;
-    }
-
-    // APLICAR RESERVA
-    const descMesa = mesas_db[mesaId].desc;
-    mesas_db[mesaId].estado = `Ocupada por: ${nombre}`;
+    mesas_db[mesaId].estado = `Ocupado por: ${usuarios_db[usuario_activo].nombre}`;
     usuarios_db[usuario_activo].mesa_activa = mesaId;
+    registrarLog("RESERVA", `${usuarios_db[usuario_activo].nombre} reservó ${mesas_db[mesaId].desc}`);
+    actualizarStatusBanner(`<h3>¡Reserva Exitosa!</h3>`, "purple");
+    sincronizarTodo();
+});
 
-    registrarLog("RESERVA", `${nombre} apartó: ${descMesa}`);
+document.getElementById("btn-cerrar").addEventListener("click", cerrarSesionKiosco);
 
-    actualizarStatusBanner(`<h3>¡Reserva Exitosa!</h3><p>${descMesa} es tuya. ¿Deseas hacer algo más?</p>`, "purple");
-    actualizarUiKiosco();
-}
-
-function cerrarSesionKiosco() {
-    usuario_activo = null;
-    panelAcciones.classList.add("hidden");
+document.getElementById("btn-activar-pago")?.addEventListener("click", () => {
+    esperandoPago = true;
     ignoreScans = false;
+    document.getElementById("status-pago").classList.remove("hidden");
+});
 
-    actualizarStatusBanner(`
-        <h3>Kiosco de Auto-Servicio</h3>
-        <p>Pase su credencial o Código de Barras por la cámara para iniciar.</p>
-    `, "default");
-    
-    // Restaurar botones a su estado original
-    btnEntrarSalir.disabled = false;
-    btnPrestar.disabled = false;
-    btnReservar.disabled = false;
-    document.getElementById('instrucciones-admin').classList.add('hidden');
+// Presets
+document.querySelectorAll(".btn-preset").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+        document.querySelectorAll(".btn-preset").forEach(b => b.classList.remove("active"));
+        e.target.classList.add("active");
+        selectedPreset = e.target.getAttribute("data-time");
+    });
+});
 
-    actualizarUiKiosco();
+// Simulador
+document.getElementById("btn-simular").addEventListener("click", () => {
+    const val = document.getElementById("input-simulador").value.trim();
+    if (val) {
+        onScanSuccess(val);
+        document.getElementById("input-simulador").value = "";
+    }
+});
+
+// Scanner Initialization
+function onScanSuccess(decodedText) {
+    if (scanLock || ignoreScans) return;
+    scanLock = true; setTimeout(() => { scanLock = false; }, 3000);
+    procesarAccesoKiosco(decodedText);
 }
 
-// Check every second for overdue loans
+function initCamera() {
+    if(html5QrCode) {
+        html5QrCode.stop().then(() => startCam()).catch(() => startCam());
+    } else {
+        html5QrCode = new window.Html5Qrcode("reader");
+        startCam();
+    }
+}
+
+function startCam() {
+    html5QrCode.start(
+        { facingMode: currentFacingMode },
+        { fps: 10, qrbox: { width: 300, height: 150 } },
+        onScanSuccess,
+        () => {} // ignore errors
+    ).catch(err => {
+        console.warn("Fallo cámara", currentFacingMode);
+        if(currentFacingMode === "environment") {
+            currentFacingMode = "user"; // fallback once
+            startCam();
+        }
+    });
+}
+
+document.getElementById("btn-toggle-cam").addEventListener("click", () => {
+    currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
+    initCamera();
+});
+
+
+// ==========================================
+// 5. LÓGICA DEL ADMIN DASHBOARD
+// ==========================================
+document.getElementById("btn-admin-login").addEventListener("click", () => {
+    const usr = document.getElementById("admin-user").value;
+    const pass = document.getElementById("admin-pass").value;
+    if(usr === "admin" && pass === "admin") {
+        document.getElementById("admin-login-screen").classList.add("hidden");
+        document.getElementById("admin-dashboard").classList.remove("hidden");
+        sincronizarTodo();
+    } else {
+        document.getElementById("admin-error").classList.remove("hidden");
+    }
+});
+
+document.getElementById("btn-admin-logout").addEventListener("click", () => {
+    document.getElementById("admin-dashboard").classList.add("hidden");
+    document.getElementById("admin-login-screen").classList.remove("hidden");
+    document.getElementById("admin-user").value = "";
+    document.getElementById("admin-pass").value = "";
+});
+
+document.getElementById("btn-admin-inventory").addEventListener("click", () => {
+    document.getElementById("modal-inventory").classList.remove("hidden");
+});
+
+document.getElementById("btn-admin-prestar").addEventListener("click", () => {
+    const alumnoId = document.getElementById("admin-input-alumno").value.trim();
+    const libroId = document.getElementById("admin-input-libro").value.trim();
+    const dias = parseInt(document.getElementById("admin-input-dias").value);
+    
+    if(!usuarios_db[alumnoId]) { alert("Alumno no encontrado"); return; }
+    if(!libros_db[libroId] || libros_db[libroId].ejemplares_disponibles < 1) { alert("Libro no válido o sin stock"); return; }
+    
+    libros_db[libroId].ejemplares_disponibles -= 1;
+    usuarios_db[alumnoId].prestamos.push({
+        libro: libroId,
+        fecha_vencimiento: Date.now() + (dias * 24 * 60 * 60 * 1000)
+    });
+    
+    registrarLog("PRÉSTAMO", `(ADMIN) asignó ${libros_db[libroId].titulo} a ${usuarios_db[alumnoId].nombre}`);
+    alert("Préstamo manual procesado con éxito.");
+    sincronizarTodo();
+});
+
+
+// ==========================================
+// 6. INVENTORY MODAL LOGIC
+// ==========================================
+document.getElementById("btn-open-inventory").addEventListener("click", () => {
+    document.getElementById("modal-inventory").classList.remove("hidden");
+});
+document.getElementById("btn-close-inventory").addEventListener("click", () => {
+    document.getElementById("modal-inventory").classList.add("hidden");
+});
+
+// Llenar filtro de categorías
+const selectCat = document.getElementById("inv-category");
+categorias_libros.forEach(c => {
+    const opt = document.createElement("option"); opt.value = c; opt.textContent = c;
+    selectCat.appendChild(opt);
+});
+
+selectCat.addEventListener("change", (e) => { currentInvCategory = e.target.value; renderInventory(); });
+document.getElementById("inv-search").addEventListener("input", (e) => { currentInvSearch = e.target.value.toLowerCase(); renderInventory(); });
+
+// Global delegate to select a book from inventory to the admin panel
+document.getElementById("inventory-grid").addEventListener("click", (e) => {
+    const card = e.target.closest(".book-card");
+    if(!card) return;
+    const bookId = card.querySelector(".book-id").textContent;
+    // Si el panel de admin está visible, lo auto-completamos
+    if(!document.getElementById("admin-dashboard").classList.contains("hidden")) {
+        document.getElementById("admin-input-libro").value = bookId;
+        document.getElementById("modal-inventory").classList.add("hidden");
+    }
+});
+
+
+// ==========================================
+// 7. ROUTING & LOOP
+// ==========================================
+document.querySelectorAll(".nav-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+        document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        
+        document.querySelectorAll(".view").forEach(v => v.classList.remove("active-view"));
+        const targetId = btn.getAttribute("data-target");
+        document.getElementById(targetId).classList.add("active-view");
+        
+        if(targetId === "view-stats" && !chartHoras) inicializarGrafica();
+    });
+});
+
+function inicializarGrafica() {
+    const ctx = document.getElementById('chart-horas').getContext('2d');
+    chartHoras = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ["08:00", "10:00", "12:00", "14:00", "16:00", "18:00"],
+            datasets: [{
+                label: 'Interacciones',
+                data: [15, 45, 80, 110, 60, 30],
+                borderColor: '#4318ff', backgroundColor: 'rgba(67, 24, 255, 0.1)', borderWidth: 3, fill: true, tension: 0.4
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+    });
+}
+
+// Loop Check para Deudas (cada 1s)
 setInterval(() => {
     let changed = false;
     const now = Date.now();
-    for (const [id, user] of Object.entries(usuarios_db)) {
+    Object.entries(usuarios_db).forEach(([id, user]) => {
         if (user.prestamos && user.prestamos.length > 0) {
             user.prestamos.forEach(p => {
                 if (p.fecha_vencimiento < now && user.deuda === 0) {
-                    // Overdue detected!
                     user.deuda = 50;
                     playAnnoyingBeep();
-                    registrarLog("MULTA", `Adeudo generado para ${user.nombre} por retraso.`);
+                    registrarLog("MULTA", `Adeudo automático para ${user.nombre}.`);
                     changed = true;
-                    
                     if (usuario_activo === id) {
-                        actualizarStatusBanner(`
-                            <h3>PRÉSTAMO VENCIDO</h3>
-                            <p>Tu préstamo expiró. Tienes un adeudo de $50 pesos.</p>
-                            <p>Sistema bloqueado. Pase a pagar al edificio administrativo.</p>
-                        `, "red");
-                        panelAcciones.classList.remove("hidden");
+                        actualizarStatusBanner(`<h3>PRÉSTAMO VENCIDO</h3><p>Adeudo de $50 pesos aplicado.</p>`, "red");
                         document.getElementById('instrucciones-admin').classList.remove('hidden');
-                        btnEntrarSalir.disabled = true;
-                        btnPrestar.disabled = true;
-                        btnReservar.disabled = true;
-                        ignoreScans = false;
+                        ["btn-entrar-salir", "btn-prestar", "btn-reservar"].forEach(btnId => document.getElementById(btnId).disabled = true);
+                        ignoreScans = true;
                     }
                 }
             });
         }
-    }
-    if (changed) {
-        actualizarUiKiosco();
-    }
+    });
+    if (changed) sincronizarTodo();
 }, 1000);
 
-// ==========================================
-// 5. INICIALIZACIÓN
-// ==========================================
-function onScanSuccess(decodedText, decodedResult) {
-    if (ignoreScans) return;
-    console.log(`Code matched = ${decodedText}`);
-    // Si ya estamos logueados, ignorar escaneos
-    procesarAccesoKiosco(decodedText);
-}
-
-function onScanFailure(error) {
-    // Ignorar errores de reconocimiento
-}
-
-// Gráfica Chart.js
-let chartHoras = null;
-function inicializarGrafica() {
-    const ctx = document.getElementById('chart-horas').getContext('2d');
-    
-    // Datos generados fijos para demostración
-    const labels = ["08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00"];
-    const trafico = [15, 30, 85, 120, 110, 150, 45, 60, 20];
-
-    chartHoras = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Interacciones',
-                data: trafico,
-                borderColor: '#007acc',
-                backgroundColor: 'rgba(0, 122, 204, 0.2)',
-                borderWidth: 2,
-                fill: true,
-                tension: 0.4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(48, 54, 61, 0.5)' },
-                    ticks: { color: '#8b949e' }
-                },
-                x: {
-                    grid: { color: 'rgba(48, 54, 61, 0.5)' },
-                    ticks: { color: '#8b949e' }
-                }
-            }
-        }
-    });
-}
-
 document.addEventListener("DOMContentLoaded", () => {
-    // Event Listeners
-    btnEntrarSalir.addEventListener("click", actionEntrarSalir);
-    btnPrestar.addEventListener("click", actionPrestar);
-    btnReservar.addEventListener("click", actionReservar);
-    btnCerrar.addEventListener("click", cerrarSesionKiosco);
-
-    // Event listeners para los presets
-    btnPresets.forEach(btn => {
-        btn.addEventListener("click", (e) => {
-            btnPresets.forEach(b => b.classList.remove("active"));
-            e.target.classList.add("active");
-            selectedPreset = e.target.getAttribute("data-time");
-        });
-    });
-
-    // Event listener para simulador manual
-    const btnSimular = document.getElementById("btn-simular");
-    if (btnSimular) {
-        btnSimular.addEventListener("click", () => {
-            const val = document.getElementById("input-simulador").value.trim();
-            if (val) {
-                onScanSuccess(val);
-                document.getElementById("input-simulador").value = "";
-            }
-        });
-    }
-
-    // Initial render
-    actualizarUiKiosco();
-    if(document.getElementById('chart-horas')) inicializarGrafica();
-
-    // Iniciar el escáner con facingMode forzará la solicitud de permisos al navegador.
-    setTimeout(() => {
-        const html5QrCode = new window.Html5Qrcode("reader");
-        const config = { fps: 10, qrbox: { width: 300, height: 150 } };
-        
-        // Intentar primero con la cámara 'environment' (trasera/autofoco) ideal para códigos
-        html5QrCode.start(
-            { facingMode: "environment" },
-            config,
-            onScanSuccess,
-            onScanFailure
-        ).catch(err => {
-            console.warn("Fallo cámara environment, intentando user...", err);
-            // Fallback a cámara frontal
-            html5QrCode.start(
-                { facingMode: "user" },
-                config,
-                onScanSuccess,
-                onScanFailure
-            ).catch(err2 => {
-                console.error("Error al iniciar cámara: ", err2);
-                actualizarStatusBanner(`<h3>Error de Cámara</h3><p>Asegúrate de dar permisos de cámara en tu navegador.</p>`, "red");
-            });
-        });
-    }, 500);
+    sincronizarTodo();
+    renderInventory();
+    setTimeout(initCamera, 500);
 });
