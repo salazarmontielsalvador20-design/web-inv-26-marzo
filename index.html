@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Library V2</title>
+    <title>Control Bibliotecario ITCM</title>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Remix Icon for icons -->
@@ -13,12 +13,15 @@
 <body>
     <!-- Top Navigation -->
     <nav class="top-nav">
-        <div class="brand">
-            <i class="ri-book-3-fill"></i> Smart Library
+        <div class="brand-container">
+            <div class="brand">
+                <i class="ri-book-3-fill"></i> Control Bibliotecario ITCM
+            </div>
+            <div class="slogan">Conectando lectores, automatizando procesos</div>
         </div>
         <div class="nav-links">
-            <button class="nav-btn active" data-target="view-kiosco"><i class="ri-user-scan-line"></i> Kiosco Alumnos</button>
-            <button class="nav-btn" data-target="view-stats"><i class="ri-bar-chart-box-line"></i> Estadísticas en Vivo</button>
+            <button class="nav-btn" data-target="view-kiosco"><i class="ri-user-scan-line"></i> Kiosco Alumnos</button>
+            <button class="nav-btn active" data-target="view-stats"><i class="ri-bar-chart-box-line"></i> Estadísticas en Vivo</button>
             <button class="nav-btn" data-target="view-admin"><i class="ri-shield-user-line"></i> Panel Admin</button>
         </div>
     </nav>
@@ -29,7 +32,7 @@
         <!-- ============================================== -->
         <!-- VIEW 1: KIOSCO ALUMNOS                         -->
         <!-- ============================================== -->
-        <main id="view-kiosco" class="view active-view">
+        <main id="view-kiosco" class="view">
             <!-- Left Column: Kiosk & Actions -->
             <section class="left-column">
                 <div class="panel glass-card">
@@ -155,7 +158,7 @@
         <!-- ============================================== -->
         <!-- VIEW 2: ESTADÍSTICAS EN VIVO                   -->
         <!-- ============================================== -->
-        <main id="view-stats" class="view">
+        <main id="view-stats" class="view active-view">
             <!-- Giant Inventory Button (Also available in Stats) -->
             <button class="btn-giant glass-card mb-4 btn-open-inventory">
                 <i class="ri-search-eye-line"></i>

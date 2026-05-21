@@ -47,7 +47,7 @@ const mesas_db = {
 let activity_log = [];
 let usuarios_en_biblioteca = new Set();
 let usuario_activo = null;
-let currentView = "view-kiosco";
+let currentView = "view-stats";
 
 // Scanner state
 let html5QrCode = null;
@@ -664,5 +664,6 @@ setInterval(() => {
 document.addEventListener("DOMContentLoaded", () => {
     sincronizarTodo();
     renderInventory();
+    inicializarGrafica(); // Auto-initialize chart since we start in Stats
     setTimeout(initCamera, 500);
 });

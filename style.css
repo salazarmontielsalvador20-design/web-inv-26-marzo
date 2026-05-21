@@ -65,7 +65,9 @@ h1, h2, h3, h4 { color: var(--text-primary); font-weight: 700; }
     top: 0;
     z-index: 100;
 }
+.brand-container { display: flex; flex-direction: column; }
 .brand { font-size: 1.5rem; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 0.5rem;}
+.slogan { font-size: 0.85rem; color: var(--text-muted); font-weight: 500; margin-top: 0.2rem; }
 .nav-links { display: flex; gap: 1rem; }
 .nav-btn {
     background: transparent; border: none; padding: 0.5rem 1rem; font-size: 1rem;
@@ -231,6 +233,20 @@ tbody tr:hover { background-color: #f8f9fa; }
 .hidden { display: none !important; }
 .spin { animation: spin 1s linear infinite; display: inline-block; }
 @keyframes spin { 100% { transform: rotate(360deg); } }
+
+/* Media Queries for Mobile/Tablets */
+@media (max-width: 992px) {
+    .stats-grid { grid-template-columns: 1fr; gap: 1rem; }
+    .dashboard-split { flex-direction: column; }
+    .active-view { flex-direction: column; }
+    .top-nav { flex-direction: column; align-items: flex-start; gap: 1rem; }
+    .nav-links { flex-wrap: wrap; width: 100%; }
+    .nav-btn { flex: 1; justify-content: center; text-align: center; }
+    .cubicles-layout { flex-direction: column; min-height: auto; gap: 1.5rem; }
+    .hallway { transform: none; writing-mode: horizontal-tb; padding: 1rem 0; text-align: center; border-top: 2px dashed var(--border-color); border-bottom: 2px dashed var(--border-color); }
+    .modal-filters { flex-direction: column; }
+    .app-container { padding: 1rem; }
+}
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 8px; }
