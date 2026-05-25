@@ -4,7 +4,14 @@
 const usuarios_db = {
     "23070526": { nombre: "Salvador (Admin)", carrera: "Ing. Sistemas", mesa_activa: null, deuda: 0, prestamos: [] },
     "23070504": { nombre: "Maria Gonzalez", carrera: "Ing. Industrial", mesa_activa: null, deuda: 0, prestamos: [] },
-    "INV-01": { nombre: "Visitante", carrera: "Externa", mesa_activa: null, deuda: 50, prestamos: [] }
+    "INV-01": { nombre: "Visitante", carrera: "Externa", mesa_activa: null, deuda: 50, prestamos: [] },
+    "23070510": { nombre: "Juan Perez", carrera: "Ing. Sistemas", mesa_activa: null, deuda: 0, prestamos: [] },
+    "23070511": { nombre: "Ana Lopez", carrera: "Ing. Industrial", mesa_activa: null, deuda: 0, prestamos: [] },
+    "23070512": { nombre: "Carlos Sanchez", carrera: "Ing. Quimica", mesa_activa: null, deuda: 0, prestamos: [] },
+    "23070513": { nombre: "Laura Martinez", carrera: "Ing. Electronica", mesa_activa: null, deuda: 0, prestamos: [] },
+    "23070514": { nombre: "Pedro Ramirez", carrera: "Lic. Administracion", mesa_activa: null, deuda: 0, prestamos: [] },
+    "23070515": { nombre: "Sofia Torres", carrera: "Ing. Civil", mesa_activa: null, deuda: 0, prestamos: [] },
+    "23070516": { nombre: "Diego Garcia", carrera: "Ing. Mecanica", mesa_activa: null, deuda: 0, prestamos: [] }
 };
 
 const categorias_libros = ["Ingeniería", "Química", "Matemáticas", "Electrónica", "Medicina", "Programación", "Física"];
@@ -44,7 +51,12 @@ const mesas_db = {
 // ==========================================
 // 2. ESTADOS GLOBALES
 // ==========================================
-let activity_log = [];
+let activity_log = [
+    { hora: "08:15:22", tipo: "ENTRADA", detalle: "Laura Martinez entró." },
+    { hora: "08:42:10", tipo: "PRÉSTAMO", detalle: "Carlos Sanchez pidió Fundamentos de Química Vol. 1" },
+    { hora: "09:05:44", tipo: "RESERVA", detalle: "Ana Lopez reservó Cubículo L1 (Izq)" },
+    { hora: "09:30:12", tipo: "SALIDA", detalle: "Juan Perez salió." }
+];
 let usuarios_en_biblioteca = new Set();
 let usuario_activo = null;
 let currentView = "view-stats";
@@ -248,6 +260,8 @@ function renderInventory() {
     const grid = document.getElementById("inventory-grid");
     grid.innerHTML = "";
     
+    const isAdminMode = !document.getElementById("admin-dashboard").classList.contains("hidden");
+    
     // Sort alphabetically
     let sortedLibros = Object.values(libros_db).sort((a,b) => a.titulo.localeCompare(b.titulo));
     
@@ -258,6 +272,7 @@ function renderInventory() {
 
         const card = document.createElement("div");
         card.className = "book-card";
+        if (isAdminMode) card.style.cursor = "pointer";
         
         let stockClass = "stock-high";
         if(libro.ejemplares_disponibles === 0) stockClass = "stock-out";
@@ -269,10 +284,11 @@ function renderInventory() {
             <div class="book-id">${libro.id}</div>
             <div class="book-cat">${libro.categoria}</div>
             <div class="book-title">${libro.titulo}</div>
-            <div class="book-meta">
+            <div class="book-meta mb-2">
                 <span class="book-stand"><i class="ri-map-pin-line"></i> ${libro.stand}</span>
                 <span class="book-stock ${stockClass}">${stockText}</span>
             </div>
+            ${isAdminMode ? '<button class="btn btn-primary mt-auto w-100" style="padding: 0.4rem; font-size: 0.8rem;"><i class="ri-check-line"></i> Seleccionar Libro</button>' : ''}
         `;
         grid.appendChild(card);
     });
@@ -300,7 +316,7 @@ function cerrarSesionKiosco() {
     const btns = ["btn-entrar-salir", "btn-prestar", "btn-devolver", "btn-reservar"];
     btns.forEach(id => document.getElementById(id).disabled = false);
 
-    actualizarStatusBanner(`<h3><i class="ri-scan-2-line"></i> Auto-Servicio</h3><p>Esperando escaneo de credencial...</p>`, "default");
+    actualizarStatusBanner(`<h3><i class="ri-scan-2-line"></i> Pase por QR</h3><p>Esperando escaneo de credencial...</p>`, "default");
     sincronizarTodo();
 }
 
@@ -445,15 +461,6 @@ document.querySelectorAll(".btn-preset").forEach(btn => {
     });
 });
 
-// Simulador
-document.getElementById("btn-simular").addEventListener("click", () => {
-    const val = document.getElementById("input-simulador").value.trim();
-    if (val) {
-        onScanSuccess(val);
-        document.getElementById("input-simulador").value = "";
-    }
-});
-
 // Scanner Initialization
 function onScanSuccess(decodedText) {
     if (scanLock || ignoreScans) return;
@@ -515,6 +522,7 @@ document.getElementById("btn-admin-logout").addEventListener("click", () => {
 
 document.getElementById("btn-admin-inventory").addEventListener("click", () => {
     document.getElementById("modal-inventory").classList.remove("hidden");
+    renderInventory(); // Re-render to ensure admin 'select' buttons show up
 });
 
 document.getElementById("btn-admin-prestar").addEventListener("click", () => {
