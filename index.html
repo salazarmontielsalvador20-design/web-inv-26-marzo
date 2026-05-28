@@ -308,8 +308,21 @@
                                 class="ri-user-received-2-line"></i> Registrar Entrada</button>
                     </div>
 
-                    <div class="panel glass-card flex-2" style="visibility: hidden;">
-                        <!-- Placeholder -->
+                    <div class="panel glass-card flex-2">
+                        <h3><i class="ri-user-follow-line"></i> Invitados Activos</h3>
+                        <p class="text-muted mb-4">Visitantes externos actualmente en las instalaciones.</p>
+
+                        <div id="lista-invitados-activos" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                            <!-- Inyectado por JS: 
+                            <div class="invitado-card">
+                                <img src="..." width="80">
+                                <p>Nombre</p>
+                                <button>Registrar Salida</button>
+                            </div>
+                            -->
+                            <p class="text-muted w-100 text-center mt-3"><i class="ri-information-line"></i> No hay
+                                invitados activos.</p>
+                        </div>
                     </div>
                 </div>
             </div>

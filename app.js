@@ -294,6 +294,7 @@ function sincronizarTodo() {
     actualizarLogs();
     actualizarStatsUI();
     actualizarAdminUI();
+    actualizarListaInvitadosActivos();
 }
 
 // ==========================================
@@ -743,11 +744,50 @@ btnRegistrarInvitado?.addEventListener("click", () => {
     btnIniciarCamara.innerHTML = '<i class="ri-camera-line"></i> Encender Cámara';
 
     sincronizarTodo();
+    actualizarListaInvitadosActivos();
 });
+
+function actualizarListaInvitadosActivos() {
+    const contenedor = document.getElementById("lista-invitados-activos");
+    if (!contenedor) return;
+
+    contenedor.innerHTML = "";
+
+    // Buscar invitados en la base de datos que estén en usuarios_en_biblioteca
+    const invitadosActivos = Array.from(usuarios_en_biblioteca)
+        .filter(id => id.startsWith("INV-"))
+        .map(id => ({ id, ...usuarios_db[id] }));
+
+    if (invitadosActivos.length === 0) {
+        contenedor.innerHTML = '<p class="text-muted w-100 text-center mt-3"><i class="ri-information-line"></i> No hay invitados activos.</p>';
+        return;
+    }
+
+    invitadosActivos.forEach(inv => {
+        const card = document.createElement("div");
+        card.style.cssText = "background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 10px; width: 140px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px;";
+
+        card.innerHTML = `
+            <img src="${inv.foto}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 8px;">
+            <p style="font-weight: 600; font-size: 0.9rem; margin: 0; line-height: 1.2;">${inv.nombre.replace(" (Invitado)", "")}</p>
+            <button class="btn btn-danger btn-sm w-100" style="padding: 4px; font-size: 0.8rem;" onclick="registrarSalidaInvitado('${inv.id}')">Dar Salida</button>
+        `;
+        contenedor.appendChild(card);
+    });
+}
+
+window.registrarSalidaInvitado = function (id) {
+    if (usuarios_en_biblioteca.has(id)) {
+        usuarios_en_biblioteca.delete(id);
+        registrarLog("SALIDA", `${usuarios_db[id].nombre} salió.`);
+        sincronizarTodo();
+    }
+};
 
 document.addEventListener("DOMContentLoaded", () => {
     sincronizarTodo();
     renderInventory();
     inicializarGrafica(); // Auto-initialize chart since we start in Stats
+    actualizarListaInvitadosActivos();
     setTimeout(initCamera, 500);
 });
