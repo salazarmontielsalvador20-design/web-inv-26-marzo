@@ -137,39 +137,6 @@ function actualizarStatusBanner(mensaje, tipoClase) {
 // ------------------------------------------
 
 function actualizarKioscoUI() {
-    // Dropdown Libros
-    if (usuario_activo) {
-        const ddLibros = document.getElementById("dd-libros");
-        ddLibros.innerHTML = '<option value="" disabled selected>1. Selecciona un libro disponible</option>';
-        Object.entries(libros_db).forEach(([id, datos]) => {
-            if (datos.ejemplares_disponibles > 0) {
-                const opt = document.createElement("option");
-                opt.value = id; opt.textContent = `${datos.titulo} (Disp: ${datos.ejemplares_disponibles})`;
-                ddLibros.appendChild(opt);
-            }
-        });
-
-        const ddMisLibros = document.getElementById("dd-mis-libros");
-        ddMisLibros.innerHTML = '<option value="" disabled selected>1. Selecciona un libro tuyo</option>';
-        if (usuarios_db[usuario_activo].prestamos && usuarios_db[usuario_activo].prestamos.length > 0) {
-            usuarios_db[usuario_activo].prestamos.forEach(p => {
-                const opt = document.createElement("option");
-                opt.value = p.libro; opt.textContent = libros_db[p.libro] ? libros_db[p.libro].titulo : p.libro;
-                ddMisLibros.appendChild(opt);
-            });
-        }
-
-        const ddMesas = document.getElementById("dd-mesas");
-        ddMesas.innerHTML = '<option value="" disabled selected>1. Selecciona un cubículo libre</option>';
-        Object.entries(mesas_db).forEach(([id, datos]) => {
-            if (datos.estado === "Disponible") {
-                const opt = document.createElement("option");
-                opt.value = id; opt.textContent = datos.desc;
-                ddMesas.appendChild(opt);
-            }
-        });
-    }
-
     // Tabla Deudores
     const tbodyDeudores = document.querySelector("#tabla-deudores tbody");
     tbodyDeudores.innerHTML = "";
@@ -336,15 +303,15 @@ function sincronizarTodo() {
 function cerrarSesionKiosco() {
     usuario_activo = null;
     document.getElementById("panel-acciones").classList.add("hidden");
+    const fotoContainer = document.getElementById("foto-container");
+    if (fotoContainer) fotoContainer.classList.add("hidden");
+
     ignoreScans = false;
     esperandoPago = false;
     document.getElementById("status-pago").classList.add("hidden");
     document.getElementById('instrucciones-admin').classList.add('hidden');
 
-    const btns = ["btn-entrar-salir", "btn-prestar", "btn-devolver", "btn-reservar"];
-    btns.forEach(id => document.getElementById(id).disabled = false);
-
-    actualizarStatusBanner(`<h3><i class="ri-scan-2-line"></i> Pase por QR</h3><p>Esperando escaneo de credencial...</p>`, "default");
+    actualizarStatusBanner(`<h3><i class="ri-scan-2-line"></i> Pase por QR / Código de Barras</h3><p>Esperando escaneo de credencial...</p>`, "default");
     sincronizarTodo();
 }
 
@@ -362,16 +329,17 @@ function procesarAccesoKiosco(qr_data) {
                 actualizarStatusBanner(`<h3><i class="ri-check-line"></i> ¡Adeudo Pagado!</h3><p>Tu cuenta ha sido liberada.</p>`, "green");
                 registrarLog("PAGO", `${usuarios_db[usuario_activo].nombre} liquidó su adeudo.`);
 
-                ["btn-entrar-salir", "btn-prestar", "btn-devolver", "btn-reservar"].forEach(id => document.getElementById(id).disabled = false);
                 sincronizarTodo();
+                if (logoutTimer) clearTimeout(logoutTimer);
+                logoutTimer = setTimeout(cerrarSesionKiosco, 3000);
             }
         }
         return;
     }
 
     if (usuarios_db.hasOwnProperty(qr_data)) {
-        usuario_activo = qr_data;
         if (usuarios_db[qr_data].deuda > 0) {
+            usuario_activo = qr_data;
             playAnnoyingBeep();
             actualizarStatusBanner(`
                 <h3><i class="ri-error-warning-line"></i> ACCESO BLOQUEADO</h3>
@@ -382,24 +350,46 @@ function procesarAccesoKiosco(qr_data) {
             esperandoPago = false;
 
             document.getElementById("panel-acciones").classList.remove("hidden");
-            document.getElementById("btn-entrar-salir").disabled = true;
-            document.getElementById("btn-prestar").disabled = true;
-            document.getElementById("btn-devolver").disabled = false;
-            document.getElementById("btn-reservar").disabled = true;
             sincronizarTodo();
             return;
         }
 
         const nombre = usuarios_db[qr_data].nombre;
-        const estadoAcceso = usuarios_en_biblioteca.has(qr_data) ? "Adentro" : "Afuera";
-        actualizarStatusBanner(`<h3>¡Hola ${nombre}!</h3><p>Estado: ${estadoAcceso}. ¿Qué deseas hacer hoy?</p>`, "blue");
+        let estadoAcceso = "";
+
+        // AUTO ENTRADA / SALIDA
+        if (usuarios_en_biblioteca.has(qr_data)) {
+            usuarios_en_biblioteca.delete(qr_data);
+            registrarLog("SALIDA", `${nombre} salió.`);
+            estadoAcceso = "Salida registrada. ¡Hasta pronto!";
+            actualizarStatusBanner(`<h3>¡Hasta pronto ${nombre}!</h3><p>${estadoAcceso}</p>`, "orange");
+        } else {
+            usuarios_en_biblioteca.add(qr_data);
+            registrarLog("ENTRADA", `${nombre} entró.`);
+            estadoAcceso = "Entrada registrada. ¡Bienvenido!";
+            actualizarStatusBanner(`<h3>¡Hola ${nombre}!</h3><p>${estadoAcceso}</p>`, "green");
+        }
 
         playSuccessBeep();
+
+        // Mostrar foto si es Salvador o Neto
+        const fotoContainer = document.getElementById("foto-container");
+        const fotoImg = document.getElementById("foto-alumno");
+        if (qr_data === "23070526") {
+            fotoImg.src = "salvador.jpg";
+            fotoContainer.classList.remove("hidden");
+        } else if (qr_data === "23070504") {
+            fotoImg.src = "neto.jpg";
+            fotoContainer.classList.remove("hidden");
+        } else {
+            fotoContainer.classList.add("hidden");
+        }
 
         document.getElementById("panel-acciones").classList.remove("hidden");
         ignoreScans = true;
         sincronizarTodo();
         if (logoutTimer) clearTimeout(logoutTimer);
+        logoutTimer = setTimeout(cerrarSesionKiosco, 5000);
     } else {
         actualizarStatusBanner(`<h3><i class="ri-error-warning-fill"></i> CÓDIGO INVÁLIDO</h3>`, "red");
         registrarLog("SEGURIDAD", "Intento de escaneo no reconocido.");
@@ -410,71 +400,7 @@ function procesarAccesoKiosco(qr_data) {
     }
 }
 
-// Botones Kiosco
-document.getElementById("btn-entrar-salir").addEventListener("click", () => {
-    if (!usuario_activo) return;
-    const nombre = usuarios_db[usuario_activo].nombre;
-    if (usuarios_en_biblioteca.has(usuario_activo)) {
-        usuarios_en_biblioteca.delete(usuario_activo);
-        registrarLog("SALIDA", `${nombre} salió.`);
-        actualizarStatusBanner(`<h3>¡Hasta pronto!</h3><p>Salida registrada para ${nombre}.</p>`, "orange");
-    } else {
-        usuarios_en_biblioteca.add(usuario_activo);
-        registrarLog("ENTRADA", `${nombre} entró.`);
-        actualizarStatusBanner(`<h3>¡Bienvenido!</h3><p>Entrada registrada para ${nombre}.</p>`, "green");
-    }
-    sincronizarTodo();
-    if (logoutTimer) clearTimeout(logoutTimer);
-    logoutTimer = setTimeout(cerrarSesionKiosco, 2000);
-});
 
-document.getElementById("btn-prestar").addEventListener("click", () => {
-    const libroId = document.getElementById("dd-libros").value;
-    if (!libroId) return;
-
-    libros_db[libroId].ejemplares_disponibles -= 1;
-    let duracionMs = 0;
-    if (selectedPreset === "20s") duracionMs = 20 * 1000;
-    else if (selectedPreset === "2h") duracionMs = 2 * 60 * 60 * 1000;
-    else if (selectedPreset === "2d") duracionMs = 2 * 24 * 60 * 60 * 1000;
-
-    usuarios_db[usuario_activo].prestamos.push({
-        libro: libroId,
-        fecha_vencimiento: Date.now() + duracionMs
-    });
-
-    registrarLog("PRÉSTAMO", `${usuarios_db[usuario_activo].nombre} pidió ${libros_db[libroId].titulo}`);
-    actualizarStatusBanner(`<h3>¡Préstamo Asignado!</h3><p>No olvides regresarlo a tiempo.</p>`, "blue");
-    sincronizarTodo();
-});
-
-document.getElementById("btn-devolver").addEventListener("click", () => {
-    const libroId = document.getElementById("dd-mis-libros").value;
-    if (!libroId) return;
-
-    usuarios_db[usuario_activo].prestamos = usuarios_db[usuario_activo].prestamos.filter(p => p.libro !== libroId);
-    libros_db[libroId].ejemplares_disponibles += 1;
-
-    registrarLog("DEVOLUCIÓN", `${usuarios_db[usuario_activo].nombre} devolvió ${libros_db[libroId].titulo}`);
-    actualizarStatusBanner(`<h3>¡Devuelto!</h3><p>Gracias por tu puntualidad.</p>`, "green");
-    sincronizarTodo();
-});
-
-document.getElementById("btn-reservar").addEventListener("click", () => {
-    const mesaId = document.getElementById("dd-mesas").value;
-    if (!mesaId) return;
-    if (usuarios_db[usuario_activo].mesa_activa !== null) {
-        actualizarStatusBanner(`<h3>Límite</h3><p>Ya tienes un cubículo asignado.</p>`, "red");
-        return;
-    }
-    mesas_db[mesaId].estado = `Ocupado por: ${usuarios_db[usuario_activo].nombre}`;
-    usuarios_db[usuario_activo].mesa_activa = mesaId;
-    registrarLog("RESERVA", `${usuarios_db[usuario_activo].nombre} reservó ${mesas_db[mesaId].desc}`);
-    actualizarStatusBanner(`<h3>¡Reserva Exitosa!</h3>`, "purple");
-    sincronizarTodo();
-});
-
-document.getElementById("btn-cerrar").addEventListener("click", cerrarSesionKiosco);
 
 document.getElementById("btn-activar-pago")?.addEventListener("click", () => {
     esperandoPago = true;
@@ -689,7 +615,6 @@ setInterval(() => {
                     if (usuario_activo === id) {
                         actualizarStatusBanner(`<h3>PRÉSTAMO VENCIDO</h3><p>Adeudo de $50 pesos aplicado.</p>`, "red");
                         document.getElementById('instrucciones-admin').classList.remove('hidden');
-                        ["btn-entrar-salir", "btn-prestar", "btn-reservar"].forEach(btnId => document.getElementById(btnId).disabled = true);
                         ignoreScans = true;
                     }
                 }
