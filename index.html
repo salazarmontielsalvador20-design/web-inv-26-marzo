@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,6 +11,7 @@
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <!-- Top Navigation -->
     <nav class="top-nav">
@@ -21,7 +23,8 @@
         </div>
         <div class="nav-links">
             <button class="nav-btn" data-target="view-kiosco"><i class="ri-user-scan-line"></i> Kiosco Alumnos</button>
-            <button class="nav-btn active" data-target="view-stats"><i class="ri-bar-chart-box-line"></i> Estadísticas en Vivo</button>
+            <button class="nav-btn active" data-target="view-stats"><i class="ri-bar-chart-box-line"></i> Estadísticas
+                en Vivo</button>
             <button class="nav-btn" data-target="view-admin"><i class="ri-shield-user-line"></i> Panel Admin</button>
         </div>
     </nav>
@@ -38,13 +41,15 @@
                 <div class="panel glass-card">
                     <div class="header-with-action">
                         <h2>Terminal Inteligente</h2>
-                        <button id="btn-toggle-cam" class="btn btn-icon" title="Cambiar Cámara"><i class="ri-camera-switch-line"></i></button>
+                        <button id="btn-toggle-cam" class="btn btn-icon" title="Cambiar Cámara"><i
+                                class="ri-camera-switch-line"></i></button>
                     </div>
-                    <p class="text-muted">Muestre su credencial (QR o Barras). El kiosco lo detectará automáticamente.</p>
-                    
+                    <p class="text-muted">Muestre su credencial (QR o Barras). El kiosco lo detectará automáticamente.
+                    </p>
+
                     <!-- Scanner Container -->
                     <div id="reader" class="scanner-container"></div>
-                    
+
                     <!-- Status Banner -->
                     <div id="status-banner" class="status-banner banner-default">
                         <h3><i class="ri-scan-2-line"></i> Pase por QR</h3>
@@ -65,7 +70,7 @@
                         <button id="btn-entrar-salir" class="btn btn-outline-primary mt-2">
                             <i class="ri-arrow-left-right-line"></i> Torniquete: Marcar Entrada / Salida
                         </button>
-                        
+
                         <div class="action-card mt-3">
                             <h4 class="text-primary"><i class="ri-book-mark-line"></i> PRÉSTAMO</h4>
                             <select id="dd-libros" class="input-modern w-100 mb-2">
@@ -78,7 +83,7 @@
                             </div>
                             <button id="btn-prestar" class="btn btn-primary w-100">Confirmar Préstamo</button>
                         </div>
-                        
+
                         <div class="action-card mt-3 bg-success-light">
                             <h4 class="text-success"><i class="ri-arrow-go-back-line"></i> DEVOLVER LECTURA</h4>
                             <select id="dd-mis-libros" class="input-modern w-100 mb-2">
@@ -86,7 +91,7 @@
                             </select>
                             <button id="btn-devolver" class="btn btn-success w-100">Confirmar Devolución</button>
                         </div>
-                        
+
                         <div class="action-card mt-3">
                             <h4 class="text-purple"><i class="ri-layout-grid-line"></i> RESERVAR CUBÍCULO</h4>
                             <select id="dd-mesas" class="input-modern w-100 mb-2">
@@ -94,7 +99,7 @@
                             </select>
                             <button id="btn-reservar" class="btn btn-purple w-100">Confirmar Reserva</button>
                         </div>
-                        
+
                         <button id="btn-cerrar" class="btn btn-danger w-100 mt-4">
                             <i class="ri-logout-box-r-line"></i> TERMINAR TRÁMITES Y SALIR
                         </button>
@@ -174,10 +179,12 @@
                     </div>
                 </div>
                 <div class="kpi-card glass-card" style="align-items: flex-start;">
-                    <div class="kpi-icon bg-warning-light text-warning"><i class="ri-money-dollar-circle-line"></i></div>
+                    <div class="kpi-icon bg-warning-light text-warning"><i class="ri-money-dollar-circle-line"></i>
+                    </div>
                     <div class="kpi-data" style="width: 100%;">
                         <h4>Deudores</h4>
-                        <div id="stat-multas-lista" style="font-size: 0.85rem; color: var(--danger); font-weight: 600; margin-top: 0.5rem; max-height: 50px; overflow-y: auto;">
+                        <div id="stat-multas-lista"
+                            style="font-size: 0.85rem; color: var(--danger); font-weight: 600; margin-top: 0.5rem; max-height: 50px; overflow-y: auto;">
                             Ninguno
                         </div>
                     </div>
@@ -225,9 +232,11 @@
 
             <!-- Dashboard Admin -->
             <div id="admin-dashboard" class="hidden">
-                <div class="panel glass-card mb-4 flex-row" style="justify-content: space-between; align-items: center;">
+                <div class="panel glass-card mb-4 flex-row"
+                    style="justify-content: space-between; align-items: center;">
                     <h2><i class="ri-admin-line"></i> Panel de Administración</h2>
-                    <button id="btn-admin-logout" class="btn btn-outline-danger"><i class="ri-logout-circle-line"></i> Cerrar Sesión</button>
+                    <button id="btn-admin-logout" class="btn btn-outline-danger"><i class="ri-logout-circle-line"></i>
+                        Cerrar Sesión</button>
                 </div>
 
                 <div class="dashboard-split">
@@ -235,18 +244,23 @@
                     <div class="panel glass-card flex-1">
                         <h3>Asignar Préstamo Manual</h3>
                         <p class="text-muted mb-4">Realiza un préstamo directamente a un alumno sin escanear.</p>
-                        
+
                         <label>No. Control / ID Alumno:</label>
-                        <input type="text" id="admin-input-alumno" class="input-modern w-100 mb-3" placeholder="Ej. 23070504">
-                        
+                        <input type="text" id="admin-input-alumno" class="input-modern w-100 mb-3"
+                            placeholder="Ej. 23070504">
+
                         <label>Buscar Libro:</label>
-                        <button id="btn-admin-inventory" class="btn btn-outline-primary w-100 mb-3"><i class="ri-search-line"></i> Abrir Inventario y Seleccionar</button>
-                        <input type="text" id="admin-input-libro" class="input-modern w-100 mb-3" placeholder="ID del Libro (Ej. LIB-001)" disabled>
-                        
+                        <button id="btn-admin-inventory" class="btn btn-outline-primary w-100 mb-3"><i
+                                class="ri-search-line"></i> Abrir Inventario y Seleccionar</button>
+                        <input type="text" id="admin-input-libro" class="input-modern w-100 mb-3"
+                            placeholder="ID del Libro (Ej. LIB-001)" disabled>
+
                         <label>Duración (Días):</label>
-                        <input type="number" id="admin-input-dias" class="input-modern w-100 mb-4" value="2" min="1" max="30">
-                        
-                        <button id="btn-admin-prestar" class="btn btn-primary w-100"><i class="ri-check-line"></i> Procesar Préstamo</button>
+                        <input type="number" id="admin-input-dias" class="input-modern w-100 mb-4" value="2" min="1"
+                            max="30">
+
+                        <button id="btn-admin-prestar" class="btn btn-primary w-100"><i class="ri-check-line"></i>
+                            Procesar Préstamo</button>
                     </div>
 
                     <!-- User Database Overview & Tools -->
@@ -275,15 +289,17 @@
                                 </select>
                                 <button id="btn-admin-liberar" class="btn btn-success w-100">Liberar Deuda</button>
                             </div>
-                            
+
                             <!-- Cubicle Assignment -->
                             <div class="flex-1">
                                 <h4><i class="ri-layout-masonry-line text-purple"></i> Asignar Cubículo</h4>
-                                <input type="text" id="admin-input-cub-alumno" class="input-modern w-100 mb-2 mt-2" placeholder="ID Alumno (Ej. 23070526)">
+                                <input type="text" id="admin-input-cub-alumno" class="input-modern w-100 mb-2 mt-2"
+                                    placeholder="ID Alumno (Ej. 23070526)">
                                 <select id="admin-dd-cubiculos" class="input-modern w-100 mb-2">
                                     <option value="" disabled selected>Selecciona cubículo libre</option>
                                 </select>
-                                <button id="btn-admin-asignar-cub" class="btn btn-purple w-100">Asignar Cubículo</button>
+                                <button id="btn-admin-asignar-cub" class="btn btn-purple w-100">Asignar
+                                    Cubículo</button>
                             </div>
                         </div>
                     </div>
@@ -302,12 +318,13 @@
                 <h2><i class="ri-book-3-line"></i> Catálogo General de Libros</h2>
                 <button id="btn-close-inventory" class="btn-icon"><i class="ri-close-line"></i></button>
             </div>
-            
+
             <div class="modal-filters flex-row mb-4" style="gap: 1rem;">
                 <div class="flex-2">
                     <div class="search-box">
                         <i class="ri-search-line"></i>
-                        <input type="text" id="inv-search" class="input-modern w-100" placeholder="Buscar por título o ID...">
+                        <input type="text" id="inv-search" class="input-modern w-100"
+                            placeholder="Buscar por título o ID...">
                     </div>
                 </div>
                 <div class="flex-1">
@@ -329,4 +346,5 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="app.js"></script>
 </body>
+
 </html>

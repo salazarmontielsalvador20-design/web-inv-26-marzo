@@ -2,8 +2,8 @@
 // 1. DATA BASE SIMULADA
 // ==========================================
 const usuarios_db = {
-    "23070526": { nombre: "Salvador (Admin)", carrera: "Ing. Sistemas", mesa_activa: null, deuda: 0, prestamos: [] },
-    "23070504": { nombre: "Maria Gonzalez", carrera: "Ing. Industrial", mesa_activa: null, deuda: 0, prestamos: [] },
+    "23070526": { nombre: "Salvador Salazar Montiel", carrera: "Ing. Sistemas", mesa_activa: null, deuda: 0, prestamos: [] },
+    "23070504": { nombre: "Nieto Cabriales Ernesto", carrera: "Ing. Industrial", mesa_activa: null, deuda: 0, prestamos: [] },
     "INV-01": { nombre: "Visitante", carrera: "Externa", mesa_activa: null, deuda: 50, prestamos: [] },
     "23070510": { nombre: "Juan Perez", carrera: "Ing. Sistemas", mesa_activa: null, deuda: 0, prestamos: [] },
     "23070511": { nombre: "Ana Lopez", carrera: "Ing. Industrial", mesa_activa: null, deuda: 0, prestamos: [] },
@@ -19,16 +19,16 @@ const prefijos = ["Fundamentos de", "Introducción a", "Avanzado:", "Manual de",
 const libros_db = {};
 
 // Generar 50 libros dinámicamente
-for(let i=1; i<=50; i++) {
+for (let i = 1; i <= 50; i++) {
     const cat = categorias_libros[i % categorias_libros.length];
     const pref = prefijos[i % prefijos.length];
     const id = `LIB-${i.toString().padStart(3, '0')}`;
     const standRow = ['A', 'B', 'C', 'D', 'E'][i % 5];
-    const standCol = Math.ceil(i/10);
-    
+    const standCol = Math.ceil(i / 10);
+
     libros_db[id] = {
         id: id,
-        titulo: `${pref} ${cat} Vol. ${Math.ceil(i/7)}`,
+        titulo: `${pref} ${cat} Vol. ${Math.ceil(i / 7)}`,
         categoria: cat,
         stand: `Stand ${standRow}${standCol}`,
         ejemplares_totales: Math.floor(Math.random() * 4) + 1, // 1 to 4 copies
@@ -106,7 +106,24 @@ function playAnnoyingBeep() {
         gain.connect(ctx.destination);
         osc.start();
         osc.stop(ctx.currentTime + 1);
-    } catch(e) {}
+    } catch (e) { }
+}
+
+function playSuccessBeep() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.setValueAtTime(1046.50, ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(1, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.5);
+    } catch (e) { }
 }
 
 function actualizarStatusBanner(mensaje, tipoClase) {
@@ -121,7 +138,7 @@ function actualizarStatusBanner(mensaje, tipoClase) {
 
 function actualizarKioscoUI() {
     // Dropdown Libros
-    if(usuario_activo) {
+    if (usuario_activo) {
         const ddLibros = document.getElementById("dd-libros");
         ddLibros.innerHTML = '<option value="" disabled selected>1. Selecciona un libro disponible</option>';
         Object.entries(libros_db).forEach(([id, datos]) => {
@@ -177,7 +194,7 @@ function actualizarLogs() {
         else if (log.tipo === "RESERVA") badgeClass = "badge-purple";
         else if (log.tipo === "PRÉSTAMO") badgeClass = "badge-blue";
         else if (log.tipo === "DEVOLUCIÓN") badgeClass = "badge-green";
-        
+
         tr.innerHTML = `<td>${log.hora}</td><td><span class="badge ${badgeClass}">${log.tipo}</span></td><td>${log.detalle}</td>`;
         tbodyLog.appendChild(tr);
     });
@@ -187,10 +204,10 @@ function actualizarStatsUI() {
     // KPI
     const fictitiousCount = 42 + usuarios_en_biblioteca.size;
     document.getElementById("stat-alumnos").textContent = fictitiousCount;
-    
+
     let librosDisponibles = Object.values(libros_db).reduce((acc, l) => acc + l.ejemplares_disponibles, 0);
     document.getElementById("stat-libros").textContent = librosDisponibles;
-    
+
     const deudores = Object.values(usuarios_db).filter(u => u.deuda > 0);
     const listaMultas = document.getElementById("stat-multas-lista");
     if (deudores.length === 0) {
@@ -203,7 +220,7 @@ function actualizarStatsUI() {
     const leftCol = document.getElementById("cubicles-left");
     const rightCol = document.getElementById("cubicles-right");
     leftCol.innerHTML = ""; rightCol.innerHTML = "";
-    
+
     Object.entries(mesas_db).forEach(([id, datos]) => {
         const div = document.createElement("div");
         const isFree = datos.estado === "Disponible";
@@ -216,15 +233,26 @@ function actualizarStatsUI() {
 
 function actualizarAdminUI() {
     const tbodyUsuarios = document.querySelector("#tabla-usuarios-admin tbody");
-    if(!tbodyUsuarios) return;
+    if (!tbodyUsuarios) return;
     tbodyUsuarios.innerHTML = "";
     Object.entries(usuarios_db).forEach(([id, datos]) => {
+        let prestamosTexto = "Ninguno";
+        if (datos.prestamos.length > 0) {
+            const now = Date.now();
+            prestamosTexto = datos.prestamos.map(p => {
+                const libroInfo = libros_db[p.libro] ? libros_db[p.libro].titulo : p.libro;
+                const diasRestantes = Math.max(0, Math.ceil((p.fecha_vencimiento - now) / (1000 * 60 * 60 * 24)));
+                const vigencia = diasRestantes > 0 ? `(${diasRestantes} días de vigencia)` : "(Vencido)";
+                return `• ${libroInfo} <small class="text-muted">${vigencia}</small>`;
+            }).join("<br>");
+        }
+
         const tr = document.createElement("tr");
         tr.innerHTML = `
             <td><strong>${id}</strong></td>
             <td>${datos.nombre}</td>
             <td class="${datos.deuda > 0 ? 'text-danger font-weight-bold' : 'text-success'}">$${datos.deuda}</td>
-            <td>${datos.prestamos.length} libros</td>
+            <td>${prestamosTexto}</td>
         `;
         tbodyUsuarios.appendChild(tr);
     });
@@ -259,25 +287,25 @@ function actualizarAdminUI() {
 function renderInventory() {
     const grid = document.getElementById("inventory-grid");
     grid.innerHTML = "";
-    
+
     const isAdminMode = !document.getElementById("admin-dashboard").classList.contains("hidden");
-    
+
     // Sort alphabetically
-    let sortedLibros = Object.values(libros_db).sort((a,b) => a.titulo.localeCompare(b.titulo));
-    
+    let sortedLibros = Object.values(libros_db).sort((a, b) => a.titulo.localeCompare(b.titulo));
+
     sortedLibros.forEach(libro => {
         // Filter Logic
-        if(currentInvCategory !== "ALL" && libro.categoria !== currentInvCategory) return;
-        if(currentInvSearch && !libro.titulo.toLowerCase().includes(currentInvSearch) && !libro.id.toLowerCase().includes(currentInvSearch)) return;
+        if (currentInvCategory !== "ALL" && libro.categoria !== currentInvCategory) return;
+        if (currentInvSearch && !libro.titulo.toLowerCase().includes(currentInvSearch) && !libro.id.toLowerCase().includes(currentInvSearch)) return;
 
         const card = document.createElement("div");
         card.className = "book-card";
         if (isAdminMode) card.style.cursor = "pointer";
-        
+
         let stockClass = "stock-high";
-        if(libro.ejemplares_disponibles === 0) stockClass = "stock-out";
+        if (libro.ejemplares_disponibles === 0) stockClass = "stock-out";
         else if (libro.ejemplares_disponibles === 1) stockClass = "stock-low";
-        
+
         let stockText = libro.ejemplares_disponibles === 0 ? "Agotado" : `${libro.ejemplares_disponibles} de ${libro.ejemplares_totales} disp.`;
 
         card.innerHTML = `
@@ -312,7 +340,7 @@ function cerrarSesionKiosco() {
     esperandoPago = false;
     document.getElementById("status-pago").classList.add("hidden");
     document.getElementById('instrucciones-admin').classList.add('hidden');
-    
+
     const btns = ["btn-entrar-salir", "btn-prestar", "btn-devolver", "btn-reservar"];
     btns.forEach(id => document.getElementById(id).disabled = false);
 
@@ -333,12 +361,12 @@ function procesarAccesoKiosco(qr_data) {
                 document.getElementById('status-pago').classList.add('hidden');
                 actualizarStatusBanner(`<h3><i class="ri-check-line"></i> ¡Adeudo Pagado!</h3><p>Tu cuenta ha sido liberada.</p>`, "green");
                 registrarLog("PAGO", `${usuarios_db[usuario_activo].nombre} liquidó su adeudo.`);
-                
+
                 ["btn-entrar-salir", "btn-prestar", "btn-devolver", "btn-reservar"].forEach(id => document.getElementById(id).disabled = false);
                 sincronizarTodo();
             }
         }
-        return; 
+        return;
     }
 
     if (usuarios_db.hasOwnProperty(qr_data)) {
@@ -350,9 +378,9 @@ function procesarAccesoKiosco(qr_data) {
                 <p>Deuda activa de $${usuarios_db[qr_data].deuda}. Pase a pagar a administración.</p>
             `, "red");
             document.getElementById('instrucciones-admin').classList.remove('hidden');
-            ignoreScans = true; 
+            ignoreScans = true;
             esperandoPago = false;
-            
+
             document.getElementById("panel-acciones").classList.remove("hidden");
             document.getElementById("btn-entrar-salir").disabled = true;
             document.getElementById("btn-prestar").disabled = true;
@@ -365,7 +393,9 @@ function procesarAccesoKiosco(qr_data) {
         const nombre = usuarios_db[qr_data].nombre;
         const estadoAcceso = usuarios_en_biblioteca.has(qr_data) ? "Adentro" : "Afuera";
         actualizarStatusBanner(`<h3>¡Hola ${nombre}!</h3><p>Estado: ${estadoAcceso}. ¿Qué deseas hacer hoy?</p>`, "blue");
-        
+
+        playSuccessBeep();
+
         document.getElementById("panel-acciones").classList.remove("hidden");
         ignoreScans = true;
         sincronizarTodo();
@@ -407,7 +437,7 @@ document.getElementById("btn-prestar").addEventListener("click", () => {
     if (selectedPreset === "20s") duracionMs = 20 * 1000;
     else if (selectedPreset === "2h") duracionMs = 2 * 60 * 60 * 1000;
     else if (selectedPreset === "2d") duracionMs = 2 * 24 * 60 * 60 * 1000;
-    
+
     usuarios_db[usuario_activo].prestamos.push({
         libro: libroId,
         fecha_vencimiento: Date.now() + duracionMs
@@ -469,7 +499,7 @@ function onScanSuccess(decodedText) {
 }
 
 function initCamera() {
-    if(html5QrCode) {
+    if (html5QrCode) {
         html5QrCode.stop().then(() => startCam()).catch(() => startCam());
     } else {
         html5QrCode = new window.Html5Qrcode("reader");
@@ -482,10 +512,10 @@ function startCam() {
         { facingMode: currentFacingMode },
         { fps: 10, qrbox: { width: 300, height: 150 } },
         onScanSuccess,
-        () => {} // ignore errors
+        () => { } // ignore errors
     ).catch(err => {
         console.warn("Fallo cámara", currentFacingMode);
-        if(currentFacingMode === "environment") {
+        if (currentFacingMode === "environment") {
             currentFacingMode = "user"; // fallback once
             startCam();
         }
@@ -504,7 +534,7 @@ document.getElementById("btn-toggle-cam").addEventListener("click", () => {
 document.getElementById("btn-admin-login").addEventListener("click", () => {
     const usr = document.getElementById("admin-user").value;
     const pass = document.getElementById("admin-pass").value;
-    if(usr === "admin" && pass === "admin") {
+    if (usr === "admin" && pass === "admin") {
         document.getElementById("admin-login-screen").classList.add("hidden");
         document.getElementById("admin-dashboard").classList.remove("hidden");
         sincronizarTodo();
@@ -529,16 +559,16 @@ document.getElementById("btn-admin-prestar").addEventListener("click", () => {
     const alumnoId = document.getElementById("admin-input-alumno").value.trim();
     const libroId = document.getElementById("admin-input-libro").value.trim();
     const dias = parseInt(document.getElementById("admin-input-dias").value);
-    
-    if(!usuarios_db[alumnoId]) { alert("Alumno no encontrado"); return; }
-    if(!libros_db[libroId] || libros_db[libroId].ejemplares_disponibles < 1) { alert("Libro no válido o sin stock"); return; }
-    
+
+    if (!usuarios_db[alumnoId]) { alert("Alumno no encontrado"); return; }
+    if (!libros_db[libroId] || libros_db[libroId].ejemplares_disponibles < 1) { alert("Libro no válido o sin stock"); return; }
+
     libros_db[libroId].ejemplares_disponibles -= 1;
     usuarios_db[alumnoId].prestamos.push({
         libro: libroId,
         fecha_vencimiento: Date.now() + (dias * 24 * 60 * 60 * 1000)
     });
-    
+
     registrarLog("PRÉSTAMO", `(ADMIN) asignó ${libros_db[libroId].titulo} a ${usuarios_db[alumnoId].nombre}`);
     alert("Préstamo manual procesado con éxito.");
     document.getElementById("admin-input-alumno").value = "";
@@ -549,7 +579,7 @@ document.getElementById("btn-admin-prestar").addEventListener("click", () => {
 document.getElementById("btn-admin-liberar")?.addEventListener("click", () => {
     const alumnoId = document.getElementById("admin-dd-deudores").value;
     if (!alumnoId) { alert("Selecciona a un alumno."); return; }
-    
+
     usuarios_db[alumnoId].deuda = 0;
     registrarLog("PAGO", `(ADMIN) liberó la deuda de ${usuarios_db[alumnoId].nombre}`);
     alert(`La deuda de ${usuarios_db[alumnoId].nombre} ha sido borrada.`);
@@ -559,17 +589,17 @@ document.getElementById("btn-admin-liberar")?.addEventListener("click", () => {
 document.getElementById("btn-admin-asignar-cub")?.addEventListener("click", () => {
     const alumnoId = document.getElementById("admin-input-cub-alumno").value.trim();
     const mesaId = document.getElementById("admin-dd-cubiculos").value;
-    
-    if(!usuarios_db[alumnoId]) { alert("Alumno no encontrado"); return; }
-    if(!mesaId) { alert("Selecciona un cubículo"); return; }
-    
+
+    if (!usuarios_db[alumnoId]) { alert("Alumno no encontrado"); return; }
+    if (!mesaId) { alert("Selecciona un cubículo"); return; }
+
     if (usuarios_db[alumnoId].mesa_activa !== null) {
         alert("El alumno ya tiene un cubículo asignado."); return;
     }
-    
+
     mesas_db[mesaId].estado = `Ocupado por: ${usuarios_db[alumnoId].nombre}`;
     usuarios_db[alumnoId].mesa_activa = mesaId;
-    
+
     registrarLog("RESERVA", `(ADMIN) asignó ${mesas_db[mesaId].desc} a ${usuarios_db[alumnoId].nombre}`);
     alert("Cubículo asignado con éxito.");
     document.getElementById("admin-input-cub-alumno").value = "";
@@ -602,10 +632,10 @@ document.getElementById("inv-search").addEventListener("input", (e) => { current
 // Global delegate to select a book from inventory to the admin panel
 document.getElementById("inventory-grid").addEventListener("click", (e) => {
     const card = e.target.closest(".book-card");
-    if(!card) return;
+    if (!card) return;
     const bookId = card.querySelector(".book-id").textContent;
     // Si el panel de admin está visible, lo auto-completamos
-    if(!document.getElementById("admin-dashboard").classList.contains("hidden")) {
+    if (!document.getElementById("admin-dashboard").classList.contains("hidden")) {
         document.getElementById("admin-input-libro").value = bookId;
         document.getElementById("modal-inventory").classList.add("hidden");
     }
@@ -619,12 +649,12 @@ document.querySelectorAll(".nav-btn").forEach(btn => {
     btn.addEventListener("click", (e) => {
         document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
-        
+
         document.querySelectorAll(".view").forEach(v => v.classList.remove("active-view"));
         const targetId = btn.getAttribute("data-target");
         document.getElementById(targetId).classList.add("active-view");
-        
-        if(targetId === "view-stats" && !chartHoras) inicializarGrafica();
+
+        if (targetId === "view-stats" && !chartHoras) inicializarGrafica();
     });
 });
 
