@@ -375,11 +375,17 @@ function procesarAccesoKiosco(qr_data) {
         // Mostrar foto si es Salvador o Neto
         const fotoContainer = document.getElementById("foto-container");
         const fotoImg = document.getElementById("foto-alumno");
+
+        // Evitar loops infinitos de error
+        fotoImg.onerror = null;
+
         if (qr_data === "23070526") {
             fotoImg.src = "salvador.jpg";
+            fotoImg.onerror = function () { this.onerror = null; this.src = "salvador.png"; };
             fotoContainer.classList.remove("hidden");
         } else if (qr_data === "23070504") {
             fotoImg.src = "neto.jpg";
+            fotoImg.onerror = function () { this.onerror = null; this.src = "neto.png"; };
             fotoContainer.classList.remove("hidden");
         } else {
             fotoContainer.classList.add("hidden");
@@ -623,6 +629,121 @@ setInterval(() => {
     });
     if (changed) sincronizarTodo();
 }, 1000);
+
+// ==========================================
+// 8. LÓGICA DE INVITADOS (GUESTS)
+// ==========================================
+let streamInvitado = null;
+let fotoDataInvitado = null;
+
+const btnIniciarCamara = document.getElementById("btn-admin-iniciar-camara");
+const btnTomarFoto = document.getElementById("btn-admin-tomar-foto");
+const btnRegistrarInvitado = document.getElementById("btn-admin-registrar-invitado");
+const videoContainer = document.getElementById("invitado-camera-container");
+const videoElement = document.getElementById("invitado-video");
+const timerElement = document.getElementById("invitado-timer");
+const canvasElement = document.getElementById("invitado-canvas");
+const fotoResultContainer = document.getElementById("invitado-foto-result");
+const fotoResultImg = document.getElementById("invitado-foto-img");
+const inputNombreInvitado = document.getElementById("admin-input-invitado");
+
+function validarRegistroInvitado() {
+    if (!btnRegistrarInvitado) return;
+    if (inputNombreInvitado && inputNombreInvitado.value.trim() !== "" && fotoDataInvitado) {
+        btnRegistrarInvitado.disabled = false;
+    } else {
+        btnRegistrarInvitado.disabled = true;
+    }
+}
+
+inputNombreInvitado?.addEventListener("input", validarRegistroInvitado);
+
+btnIniciarCamara?.addEventListener("click", async () => {
+    try {
+        streamInvitado = await navigator.mediaDevices.getUserMedia({ video: true });
+        videoElement.srcObject = streamInvitado;
+        videoContainer.style.display = "block";
+        fotoResultContainer.classList.add("hidden");
+        fotoDataInvitado = null;
+        validarRegistroInvitado();
+
+        btnIniciarCamara.classList.add("hidden");
+        btnTomarFoto.classList.remove("hidden");
+    } catch (err) {
+        alert("Error al acceder a la cámara: " + err.message);
+    }
+});
+
+btnTomarFoto?.addEventListener("click", () => {
+    let count = 3;
+    timerElement.style.display = "block";
+    timerElement.textContent = count;
+    btnTomarFoto.disabled = true;
+
+    const interval = setInterval(() => {
+        count--;
+        if (count > 0) {
+            timerElement.textContent = count;
+        } else {
+            clearInterval(interval);
+            timerElement.style.display = "none";
+            btnTomarFoto.disabled = false;
+
+            // Tomar foto
+            canvasElement.width = videoElement.videoWidth;
+            canvasElement.height = videoElement.videoHeight;
+            const ctx = canvasElement.getContext("2d");
+            ctx.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+            fotoDataInvitado = canvasElement.toDataURL("image/png");
+
+            // Detener camara
+            if (streamInvitado) {
+                streamInvitado.getTracks().forEach(track => track.stop());
+            }
+
+            // UI
+            videoContainer.style.display = "none";
+            fotoResultImg.src = fotoDataInvitado;
+            fotoResultContainer.classList.remove("hidden");
+
+            btnIniciarCamara.classList.remove("hidden");
+            btnIniciarCamara.innerHTML = '<i class="ri-camera-line"></i> Retomar Foto';
+            btnTomarFoto.classList.add("hidden");
+
+            validarRegistroInvitado();
+        }
+    }, 1000);
+});
+
+btnRegistrarInvitado?.addEventListener("click", () => {
+    const nombre = inputNombreInvitado.value.trim();
+    if (!nombre || !fotoDataInvitado) return;
+
+    const invitadoId = `INV-${Date.now()}`;
+
+    usuarios_db[invitadoId] = {
+        nombre: `${nombre} (Invitado)`,
+        carrera: "Externa",
+        mesa_activa: null,
+        deuda: 0,
+        prestamos: [],
+        foto: fotoDataInvitado
+    };
+
+    usuarios_en_biblioteca.add(invitadoId);
+    registrarLog("ENTRADA", `Invitado físico: ${nombre}`);
+
+    alert(`Entrada registrada para el invitado: ${nombre}`);
+
+    // Limpiar formulario
+    inputNombreInvitado.value = "";
+    fotoDataInvitado = null;
+    fotoResultContainer.classList.add("hidden");
+    btnRegistrarInvitado.disabled = true;
+    btnIniciarCamara.innerHTML = '<i class="ri-camera-line"></i> Encender Cámara';
+
+    sincronizarTodo();
+});
 
 document.addEventListener("DOMContentLoaded", () => {
     sincronizarTodo();

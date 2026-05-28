@@ -272,6 +272,46 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="dashboard-split mt-4">
+                    <!-- Guest Access Panel -->
+                    <div class="panel glass-card flex-1">
+                        <h3><i class="ri-user-add-line"></i> Acceso a Invitados</h3>
+                        <p class="text-muted mb-4">Registrar entrada de visitante externo sin permisos de préstamo.</p>
+
+                        <label>Nombre del Visitante:</label>
+                        <input type="text" id="admin-input-invitado" class="input-modern w-100 mb-3"
+                            placeholder="Nombre completo">
+
+                        <div id="invitado-camera-container" class="scanner-container"
+                            style="min-height: 150px; display: none; position: relative;">
+                            <video id="invitado-video" autoplay playsinline
+                                style="width: 100%; border-radius: 16px;"></video>
+                            <div id="invitado-timer"
+                                style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 4rem; color: white; font-weight: bold; text-shadow: 0 4px 15px rgba(0,0,0,0.8); display: none;">
+                            </div>
+                        </div>
+                        <canvas id="invitado-canvas" class="hidden"></canvas>
+
+                        <div id="invitado-foto-result" class="hidden text-center mb-3">
+                            <img id="invitado-foto-img" src="" alt="Foto Invitado"
+                                style="max-width: 100%; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                        </div>
+
+                        <div class="flex-row mb-3" style="gap: 1rem;">
+                            <button id="btn-admin-iniciar-camara" class="btn btn-outline-primary flex-1"><i
+                                    class="ri-camera-line"></i> Encender Cámara</button>
+                            <button id="btn-admin-tomar-foto" class="btn btn-warning flex-1 hidden"><i
+                                    class="ri-camera-lens-line"></i> Tomar Foto</button>
+                        </div>
+                        <button id="btn-admin-registrar-invitado" class="btn btn-primary w-100" disabled><i
+                                class="ri-user-received-2-line"></i> Registrar Entrada</button>
+                    </div>
+
+                    <div class="panel glass-card flex-2" style="visibility: hidden;">
+                        <!-- Placeholder -->
+                    </div>
+                </div>
             </div>
         </main>
 
